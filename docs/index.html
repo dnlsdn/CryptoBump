@@ -85,19 +85,13 @@
         }
 
         .logo {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .logo img {
-            height: 65px;
-            width: auto;
-            transition: transform 0.3s;
-        }
-
-        .logo img:hover {
-            transform: scale(1.05);
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            cursor: pointer;
         }
 
         .nav-links {
@@ -586,9 +580,7 @@
 
     <header id="header">
         <nav>
-            <div class="logo">
-                <img src="images/logo.png" alt="CryptoBump">
-            </div>
+            <div class="logo">⚡ CryptoBump</div>
             <ul class="nav-links">
                 <li><a href="#home">Home</a></li>
                 <li><a href="#how">How It Works</a></li>
@@ -940,17 +932,13 @@
 
         // Easter egg: Click logo 5 times for secret message
         let logoClicks = 0;
-        const logoElement = document.querySelector('.logo');
-        if (logoElement) {
-            logoElement.style.cursor = 'pointer';
-            logoElement.addEventListener('click', () => {
-                logoClicks++;
-                if (logoClicks === 5) {
-                    alert('⚡ You found the secret! CryptoBump is built with ❤️ for ETHRome 2025');
-                    logoClicks = 0;
-                }
-            });
-        }
+        document.querySelector('.logo').addEventListener('click', () => {
+            logoClicks++;
+            if (logoClicks === 5) {
+                alert('⚡ You found the secret! CryptoBump is built with ❤️ for ETHRome 2025');
+                logoClicks = 0;
+            }
+        });
     </script>
 </body>
 </html>
