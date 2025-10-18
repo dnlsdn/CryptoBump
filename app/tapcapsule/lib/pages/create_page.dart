@@ -8,10 +8,10 @@ import 'package:tapcapsule/services/contract_client.dart';
 import 'package:tapcapsule/services/signer_service.dart';
 import 'package:tapcapsule/utils/ui_safety.dart';
 import 'package:tapcapsule/widgets/section_card.dart';
-import 'package:web3dart/crypto.dart' as crypto; // keccak256 + bytesToHex
+import 'package:web3dart/crypto.dart' as crypto;
 import '../models/voucher.dart';
 import '../state/app_memory.dart';
-import '../utils/eth.dart'; // contiene ethToWeiDouble(…)
+import '../utils/eth.dart';
 import '../config/app_config.dart';
 
 class CreatePage extends StatefulWidget {
@@ -21,7 +21,7 @@ class CreatePage extends StatefulWidget {
 }
 
 class _CreatePageState extends State<CreatePage> {
-  final _amountCtrl = TextEditingController(text: '0.005'); // ETH demo
+  final _amountCtrl = TextEditingController(text: '0.005');
   DateTime _expiry = DateTime.now().add(const Duration(hours: 24));
   OpStatus _status = OpStatus.idle;
   String? _msg;
@@ -47,7 +47,6 @@ class _CreatePageState extends State<CreatePage> {
           height: 220 + MediaQuery.of(ctx).padding.bottom,
           child: Column(
             children: [
-              // barra comandi stile iOS
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 child: Row(
@@ -80,8 +79,6 @@ class _CreatePageState extends State<CreatePage> {
     }
   }
 
-  // === NEW: dialog per impostare la private key del wallet di test (solo RAM)
-
   Future<void> _createOnChain() async {
     hideAllTextMenusAndKeyboard();
     FocusScope.of(context).unfocus();
@@ -89,66 +86,60 @@ class _CreatePageState extends State<CreatePage> {
     if (amt == null || amt <= 0) {
       setState(() {
         _status = OpStatus.error;
-        _msg = 'Inserisci un importo valido (> 0)';
+        _msg = 'Enter a valid amount (> 0)';
       });
       return;
     }
     if (!signer.isReady) {
       setState(() {
         _status = OpStatus.error;
-        _msg = 'Nessun signer. Premi “Imposta chiave privata” e incolla la PK del wallet di test.';
+        _msg = 'No signer. Press "Set private key" and paste the test wallet PK.';
       });
       return;
     }
 
     setState(() {
       _status = OpStatus.working;
-      _msg = 'Creazione in corso…';
+      _msg = 'Creating in progress...';
     });
 
     try {
-      // 1) Segreto + hash (bytes32)
-      final secretBytes = Voucher.genSecretBytes(bytes: 32); // Uint8List
+      final secretBytes = Voucher.genSecretBytes(bytes: 32);
       final secretB64 = Voucher.encodeSecretB64Url(secretBytes);
-      final hBytes = crypto.keccak256(secretBytes); // List<int> (32)
+      final hBytes = crypto.keccak256(secretBytes);
       final hHex = crypto.bytesToHex(hBytes, include0x: true);
 
-      // 2) Importo e scadenza
-      final amountWei = ethToWeiDouble(amt); // BigInt
+      final amountWei = ethToWeiDouble(amt);
       final expiry = BigInt.from(_expiry.millisecondsSinceEpoch ~/ 1000);
 
-      // 3) Client + credenziali (dal signer, non burner)
       final cc = await ContractClient.create();
       final creds = signer.requireCreds();
 
-      // 4) Chiamata on-chain
       final txHash = await cc.createVoucherETH(
-        hBytes: hBytes as dynamic, // web3dart accetta Uint8List/List<int>
+        hBytes: hBytes as dynamic,
         amountWei: amountWei,
         expiry: expiry,
         creds: creds,
       );
       cc.dispose();
 
-      // 5) Aggiorna memoria UI
       final v = Voucher(amount: amt, expiry: _expiry, secret: secretB64, h: hHex);
       AppMemory.lastVoucher = v;
 
       setState(() {
         _status = OpStatus.success;
-        _msg = 'Creato! tx: $txHash';
+        _msg = 'Created! tx: $txHash';
       });
 
-      // dopo il setState di success
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: const Text('Buono creato'), backgroundColor: Colors.green));
+        ).showSnackBar(SnackBar(content: const Text('Voucher created'), backgroundColor: Colors.green));
       }
     } catch (e) {
       setState(() {
         _status = OpStatus.error;
-        _msg = 'Errore creazione: $e';
+        _msg = 'Error creating: $e';
       });
     }
   }
@@ -161,18 +152,17 @@ class _CreatePageState extends State<CreatePage> {
     if (!signer.isReady) {
       setState(() {
         _status = OpStatus.error;
-        _msg = 'Nessun signer. Imposta la chiave privata di test.';
+        _msg = 'No signer. Set the test private key.';
       });
       return;
     }
 
     setState(() {
       _status = OpStatus.working;
-      _msg = 'Annullamento in corso…';
+      _msg = 'Refund in progress...';
     });
 
     try {
-      // h: "0x" + 64 hex -> bytes32
       final hexNo0x = v.h.startsWith('0x') ? v.h.substring(2) : v.h;
       final hBytes = Uint8List.fromList(crypto.hexToBytes(hexNo0x));
 
@@ -181,17 +171,16 @@ class _CreatePageState extends State<CreatePage> {
       cc.dispose();
 
       AppMemory.lastRefundTx = tx;
-      // svuota la memoria locale del buono
       AppMemory.lastVoucher = null;
 
       setState(() {
         _status = OpStatus.success;
-        _msg = 'Rimborsato! tx: $tx';
+        _msg = 'Refunded! tx: $tx';
       });
     } catch (e) {
       setState(() {
         _status = OpStatus.error;
-        _msg = 'Errore refund: $e';
+        _msg = 'Error refunding: $e';
       });
     }
   }
@@ -205,28 +194,28 @@ class _CreatePageState extends State<CreatePage> {
         const SizedBox(height: 12),
 
         SectionCard(
-          title: 'Crea un buono',
-          caption: 'Blocca ETH fino alla scadenza. Il destinatario incassa col codice segreto.',
+          title: 'Create a voucher',
+            caption: 'Lock ETH until expiry. The recipient cashes out with the secret code.',
           children: [
             TextField(
               controller: _amountCtrl,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Importo', prefixText: 'Ξ ', helperText: 'Esempio 0.005'),
+              decoration: const InputDecoration(labelText: 'Import', prefixText: 'Ξ ', helperText: 'Example 0.005'),
               onTapOutside: (_) => hideAllTextMenusAndKeyboard(),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Scadenza'),
+              title: const Text('Expiry'),
               subtitle: Text(_expiry.toLocal().toString()),
               trailing: FilledButton.tonalIcon(
                 icon: const Icon(Icons.edit_outlined),
-                label: const Text('Modifica'),
+                label: const Text('Edit'),
                 onPressed: _pickExpiry,
               ),
             ),
             FilledButton.icon(
               icon: const Icon(Icons.add_box_outlined),
-              label: const Text('Crea buono'),
+              label: const Text('Create voucher'),
               onPressed: _status == OpStatus.working ? null : _createOnChain,
             ),
           ],
@@ -238,12 +227,12 @@ class _CreatePageState extends State<CreatePage> {
         if (AppMemory.lastVoucher != null) ...[
           const SizedBox(height: 8),
           SectionCard(
-            title: 'Ultimo buono',
+            title: 'Last voucher',
             trailing: IconButton(
               icon: const Icon(Icons.cancel),
-              tooltip: AppMemory.lastVoucher!.isExpired
-                  ? 'Annulla buono e riprendi i fondi'
-                  : 'Disponibile dopo la scadenza',
+                tooltip: AppMemory.lastVoucher!.isExpired
+                  ? 'Cancel voucher and reclaim funds'
+                  : 'Available after expiry',
               color: AppMemory.lastVoucher!.isExpired ? Theme.of(context).colorScheme.error : null,
               onPressed: (_status == OpStatus.working || !AppMemory.lastVoucher!.isExpired) ? null : _refund,
             ),
@@ -256,7 +245,7 @@ class _CreatePageState extends State<CreatePage> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  Chip(label: Text('Scade: ${AppMemory.lastVoucher!.expiry.toLocal()}')),
+                  Chip(label: Text('Expires: ${AppMemory.lastVoucher!.expiry.toLocal()}')),
                   Chip(label: Text('h: ${AppMemory.lastVoucher!.shortH}')),
                 ],
               ),
@@ -268,7 +257,7 @@ class _CreatePageState extends State<CreatePage> {
                 children: [
                   TextButton.icon(
                     icon: const Icon(Icons.copy_all),
-                    label: const Text('Copia secret'),
+                    label: const Text('Copy secret'),
                     onPressed: () {
                       hideAllTextMenusAndKeyboard();
                       Clipboard.setData(ClipboardData(text: AppMemory.lastVoucher!.secret));
@@ -277,7 +266,7 @@ class _CreatePageState extends State<CreatePage> {
                   const Spacer(),
                   FilledButton.tonalIcon(
                     icon: const Icon(Icons.near_me_outlined),
-                    label: const Text('Passa a Bump'),
+                    label: const Text('Go to Bump'),
                     onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BumpPage())),
                   ),
                 ],
@@ -289,7 +278,7 @@ class _CreatePageState extends State<CreatePage> {
         if (_status == OpStatus.success && AppConfig.I.explorerBaseUrl.isNotEmpty && _msg != null)
           TextButton.icon(
             icon: const Icon(Icons.open_in_new),
-            label: const Text('Apri tx su explorer'),
+            label: const Text('Open tx on explorer'),
             onPressed: () {
               final parts = _msg!.split('tx: ');
               if (parts.length == 2) {
@@ -313,9 +302,9 @@ class _StatusBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     if (status == OpStatus.idle) return const SizedBox.shrink();
     final text = switch (status) {
-      OpStatus.working => 'In corso...',
-      OpStatus.success => 'Fatto!',
-      OpStatus.error => 'Errore',
+      OpStatus.working => 'In progress...',
+      OpStatus.success => 'Done!',
+      OpStatus.error => 'Error',
       _ => '',
     };
     return Card(

@@ -1,4 +1,3 @@
-// lib/pages/bump_page.dart
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -27,7 +26,7 @@ class _BumpPageState extends State<BumpPage> {
   void initState() {
     super.initState();
     _isSender = AppMemory.lastVoucher != null;
-    _sub = Nearby.events.listen(_onEvent); // ⬅️ salva subscription
+    _sub = Nearby.events.listen(_onEvent);
   }
 
   void _onEvent(Map<String, dynamic> e) {
@@ -35,41 +34,38 @@ class _BumpPageState extends State<BumpPage> {
       case 'status':
         if (e['value'] == 'connecting') _set(BumpStatus.discovering, 'Connessione…');
         if (e['value'] == 'browsing' || e['value'] == 'advertising') {
-          _set(BumpStatus.discovering, _isSender ? 'In attesa di un iPhone vicino…' : 'Cerco un iPhone vicino…');
+            _set(BumpStatus.discovering, _isSender ? 'Waiting for a nearby iPhone…' : 'Looking for a nearby iPhone…');
         }
         break;
       case 'connected':
-        _set(BumpStatus.peerFound, 'Connesso a ${e['peer']}');
-        if (_isSender) _sendSecret(); // auto-send sul sender
+        _set(BumpStatus.peerFound, 'Connected to ${e['peer']}');
+        if (_isSender) _sendSecret();
         break;
       case 'sent':
-        _set(BumpStatus.sent, 'Codice inviato ✔️');
+        _set(BumpStatus.sent, 'Code sent ✔️');
         break;
       case 'payload':
         final map = jsonDecode(e['json'] as String) as Map<String, dynamic>;
         final payload = BumpPayload.fromJson(map);
         AppMemory.lastBumpPayload = payload;
-        _set(BumpStatus.received, 'Buono ricevuto ✔️');
-
-        // chiudi la sessione *dopo* aver ricevuto
+        _set(BumpStatus.received, 'Voucher received ✔️');
         Nearby.stop();
 
-        // feedback non invadente
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(backgroundColor: Colors.green, content: Text('Buono ricevuto. Puoi incassare quando vuoi.')),
+            const SnackBar(backgroundColor: Colors.green, content: Text('Voucher received. You can redeem it whenever you want.')),
           );
         }
         break;
       case 'disconnected':
         if (_status == BumpStatus.sent || _status == BumpStatus.received) {
-          _set(BumpStatus.idle, 'Sessione terminata'); // chiusura ok
+          _set(BumpStatus.idle, 'Session ended');
         } else {
-          _set(BumpStatus.error, 'Connessione persa');
+          _set(BumpStatus.error, 'Connection lost');
         }
         break;
       case 'error':
-        _set(BumpStatus.error, e['message']?.toString() ?? 'Errore');
+        _set(BumpStatus.error, e['message']?.toString() ?? 'Error');
         break;
     }
   }
@@ -80,7 +76,7 @@ class _BumpPageState extends State<BumpPage> {
   });
 
   Future<void> _start() async {
-    _set(BumpStatus.discovering, _isSender ? 'In attesa di un iPhone vicino…' : 'Cerco iPhone vicino…');
+    _set(BumpStatus.discovering, _isSender ? 'Waiting for a nearby iPhone…' : 'Looking for a nearby iPhone…');
     if (_isSender) {
       await Nearby.startSender();
     } else {
@@ -93,8 +89,7 @@ class _BumpPageState extends State<BumpPage> {
     if (v == null) return;
     final payload = BumpPayload.fromVoucher(v).toJson();
     await Nearby.sendJson(payload);
-    // niente stop qui ✅ lascia arrivare l'eco 'payload'
-    _set(BumpStatus.sent, 'Codice inviato ✔️');
+    _set(BumpStatus.sent, 'Code sent ✔️');
   }
 
   Future<void> _reset() async {
@@ -104,7 +99,7 @@ class _BumpPageState extends State<BumpPage> {
 
   @override
   void dispose() {
-    _sub.cancel(); // ⬅️ evita listener duplicati
+    _sub.cancel();
     Nearby.stop();
     super.dispose();
   }
@@ -119,10 +114,10 @@ class _BumpPageState extends State<BumpPage> {
         const SizedBox(height: 12),
 
         SectionCard(
-          title: _isSender ? 'Invia vicino' : 'Ricevi vicino',
+          title: _isSender ? 'Send nearby' : 'Receive nearby',
           caption: _isSender
-              ? 'Tieni i telefoni vicini. Il buono viene inviato automaticamente quando connessi.'
-              : 'Tieni i telefoni vicini. Il buono arriverà automaticamente.',
+              ? 'Keep phones close together. The voucher will be sent automatically when connected.'
+              : 'Keep phones close together. The voucher will arrive automatically.',
           children: [
             Wrap(
               spacing: 8,
@@ -130,7 +125,7 @@ class _BumpPageState extends State<BumpPage> {
               children: [
                 FilledButton.icon(
                   icon: const Icon(Icons.radar),
-                  label: Text(_isSender ? 'Attiva invio' : 'Cerca vicino'),
+                  label: Text(_isSender ? 'Start sending' : 'Search nearby'),
                   onPressed: _status == BumpStatus.discovering ? null : _start,
                 ),
                 TextButton.icon(icon: const Icon(Icons.restart_alt), label: const Text('Stop'), onPressed: _reset),
@@ -160,24 +155,24 @@ class _BumpPageState extends State<BumpPage> {
 
         if (_status == BumpStatus.received && p != null)
           SectionCard(
-            title: 'Buono ricevuto',
-            caption: 'Premi quando vuoi per incassare.',
+            title: 'Voucher received',
+            caption: 'Press when you want to redeem.',
             children: [
               Text(
                 '${p.amount} ETH',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
               ),
-              Chip(label: Text('Scade: ${p.expiry.toLocal()}')),
+              Chip(label: Text('Expires: ${p.expiry.toLocal()}')),
               FilledButton.icon(
                 icon: const Icon(Icons.download_done_outlined),
-                label: const Text('Vai a Redeem'),
+                label: const Text('Go to Redeem'),
                 onPressed: () {
                   hideAllTextMenusAndKeyboard();
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => RedeemPage(
                         secretPrefill: p.secret,
-                        autoRedeem: false, // ⬅️ niente auto-redeem
+                        autoRedeem: false,
                       ),
                     ),
                   );
@@ -190,12 +185,9 @@ class _BumpPageState extends State<BumpPage> {
   }
 }
 
-// in qualunque file UI:
-// in qualunque file UI:
 Widget stepChips(int current) {
-  const labels = ['1 Crea', '2 Bump', '3 Incassa'];
+  const labels = ['1 Create', '2 Bump', '3 Redeem'];
   return Material(
-    // <-- fornisce l’antenato Material richiesto dai ChoiceChip
     type: MaterialType.transparency,
     child: Wrap(
       spacing: 8,

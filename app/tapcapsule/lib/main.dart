@@ -10,7 +10,7 @@ import 'widgets/network_probe.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await AppConfig.load(); // <— NEW
+  await AppConfig.load();
   runApp(const TapCapsuleApp());
 }
 
@@ -46,7 +46,6 @@ class _HomeShellState extends State<_HomeShell> {
       body: SafeArea(
         child: Column(
           children: [
-            // === NEW: banner di connessione rete in alto, visibile ovunque
             const Padding(padding: EdgeInsets.fromLTRB(16, 16, 16, 0), child: NetworkProbe()),
             const SizedBox(height: 8),
             Padding(
@@ -105,14 +104,14 @@ class _HomeShellState extends State<_HomeShell> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Wallet di test',
+                    'Test Wallet',
                     style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     signer.isReady
-                        ? 'Attuale: ${signer.address!.hex.substring(0, 10)}…'
-                        : 'Incolla la private key (solo RAM).',
+                      ? 'Current: ${signer.address!.hex.substring(0, 10)}…'
+                      : 'Paste the private key (RAM only).',
                     style: Theme.of(
                       ctx,
                     ).textTheme.bodySmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurface.withOpacity(.6)),
@@ -128,11 +127,11 @@ class _HomeShellState extends State<_HomeShell> {
                       labelText: 'Private key',
                       hintText: '0x…',
                       prefixIcon: const Icon(Icons.vpn_key_rounded),
-                      helperText: 'Non viene salvata su disco',
+                        helperText: 'Not saved to disk',
                       suffixIcon: IconButton(
                         icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
                         onPressed: () => setModal(() => obscure = !obscure),
-                        tooltip: obscure ? 'Mostra' : 'Nascondi',
+                        tooltip: obscure ? 'Show' : 'Hide',
                       ),
                     ),
                   ),
@@ -141,7 +140,7 @@ class _HomeShellState extends State<_HomeShell> {
                     children: [
                       TextButton.icon(
                         icon: const Icon(Icons.content_paste),
-                        label: const Text('Incolla'),
+                        label: const Text('Paste'),
                         onPressed: () async {
                           final data = await Clipboard.getData('text/plain');
                           if (data?.text != null) setModal(() => ctrl.text = data!.text!.trim());
@@ -150,7 +149,7 @@ class _HomeShellState extends State<_HomeShell> {
                       const Spacer(),
                       if (signer.isReady)
                         TextButton(
-                          child: const Text('Rimuovi chiave'),
+                          child: const Text('Remove key'),
                           onPressed: () {
                             signer.clear();
                             if (mounted) setState(() {});
@@ -158,7 +157,7 @@ class _HomeShellState extends State<_HomeShell> {
                           },
                         ),
                       FilledButton(
-                        child: const Text('Usa questa chiave'),
+                        child: const Text('Use this key'),
                         onPressed: () async {
                           try {
                             await signer.setPrivateKey(ctrl.text.trim());
@@ -166,11 +165,11 @@ class _HomeShellState extends State<_HomeShell> {
                             if (mounted) {
                               ScaffoldMessenger.of(
                                 context,
-                              ).showSnackBar(SnackBar(content: Text('Signer impostato: ${signer.address}')));
+                              ).showSnackBar(SnackBar(content: Text('Signer set: ${signer.address}')));
                             }
                             Navigator.pop(ctx);
                           } catch (_) {
-                            ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Chiave non valida')));
+                            ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Invalid key')));
                           }
                         },
                       ),

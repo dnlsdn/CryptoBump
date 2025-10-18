@@ -25,7 +25,6 @@ class _NetworkProbeState extends State<NetworkProbe> {
   Future<_ProbeResult> _probe(int expectedChainId) async {
     try {
       final block = await _client.getBlockNumber();
-      // getChainId -> BigInt
       final chainId = (await _client.getChainId()).toInt();
       final ok = chainId == expectedChainId;
       return _ProbeResult(ok: ok, blockNumber: block, chainId: chainId, error: null);
@@ -48,22 +47,22 @@ class _NetworkProbeState extends State<NetworkProbe> {
         if (snap.connectionState != ConnectionState.done) {
           return const _Tile(
             icon: Icons.hourglass_bottom,
-            title: 'Connessione in corso…',
-            subtitle: 'Controllo RPC e chainId…',
+            title: 'Connecting...',
+            subtitle: 'Checking RPC and chainId...',
           );
         }
         final r = snap.data;
         if (r == null || !r.ok) {
           return _Tile(
             icon: Icons.error_outline,
-            title: 'Connessione fallita',
-            subtitle: r?.error ?? 'RPC non raggiungibile',
+            title: 'Connection failed',
+            subtitle: r?.error ?? 'RPC unreachable',
             color: Theme.of(context).colorScheme.error,
           );
         }
         return _Tile(
           icon: Icons.check_circle,
-          title: 'Connesso a Base Sepolia',
+          title: 'Connected to Base Sepolia',
           subtitle: 'chainId=${r.chainId} • latest block=${r.blockNumber}',
           color: Theme.of(context).colorScheme.primary,
         );
