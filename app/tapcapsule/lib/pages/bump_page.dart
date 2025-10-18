@@ -1,8 +1,12 @@
+// lib/pages/bump_page.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:tapcapsule/models/voucher.dart';
+import '../models/voucher.dart';
 import '../state/app_memory.dart';
+import '../nearby/nearby.dart';
+import 'redeem_page.dart';
 
-enum BumpStatus { idle, discovering, peerFound, sent, error }
+enum BumpStatus { idle, discovering, peerFound, sent, received, error }
 
 class BumpPage extends StatefulWidget {
   const BumpPage({super.key});
@@ -13,41 +17,88 @@ class BumpPage extends StatefulWidget {
 class _BumpPageState extends State<BumpPage> {
   BumpStatus _status = BumpStatus.idle;
   String? _msg;
+  late final bool _isSender;
 
-  Future<void> _startDiscover() async {
-    setState(() {
-      _status = BumpStatus.discovering;
-      _msg = 'Cerco iPhone vicino...';
-    });
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() {
-      _status = BumpStatus.peerFound;
-      _msg = 'Dispositivo vicino trovato.';
-    });
+  @override
+  void initState() {
+    super.initState();
+    _isSender = AppMemory.lastVoucher != null;
+    Nearby.events.listen(_onEvent);
+  }
+
+  void _onEvent(Map<String, dynamic> e) {
+    switch (e['type']) {
+      case 'status':
+        if (e['value'] == 'connecting') _set(BumpStatus.discovering, 'Connessione…');
+        if (e['value'] == 'browsing' || e['value'] == 'advertising') {
+          _set(BumpStatus.discovering, _isSender ? 'In attesa di un iPhone vicino…' : 'Cerco un iPhone vicino…');
+        }
+        break;
+      case 'connected':
+        _set(BumpStatus.peerFound, 'Connesso a ${e['peer']}');
+        if (_isSender) _sendSecret(); // auto-send sul sender
+        break;
+      case 'sent':
+        _set(BumpStatus.sent, 'Codice inviato ✔️');
+        break;
+      case 'payload':
+        final map = jsonDecode(e['json'] as String) as Map<String, dynamic>;
+        final payload = BumpPayload.fromJson(map);
+        AppMemory.lastBumpPayload = payload;
+        _set(BumpStatus.received, 'Buono ricevuto ✔️');
+        if (mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => RedeemPage(
+                secretPrefill: payload.secret,
+                autoRedeem: true, // <— incassa subito
+              ),
+            ),
+          );
+        }
+        break;
+      case 'disconnected':
+        _set(BumpStatus.error, 'Connessione persa');
+        break;
+      case 'error':
+        _set(BumpStatus.error, e['message']?.toString() ?? 'Errore');
+        break;
+    }
+  }
+
+  void _set(BumpStatus s, String? m) => setState(() {
+    _status = s;
+    _msg = m;
+  });
+
+  Future<void> _start() async {
+    _set(BumpStatus.discovering, _isSender ? 'In attesa di un iPhone vicino…' : 'Cerco iPhone vicino…');
+    if (_isSender) {
+      await Nearby.startSender();
+    } else {
+      await Nearby.startReceiver();
+    }
   }
 
   Future<void> _sendSecret() async {
     final v = AppMemory.lastVoucher;
-    if (v == null) {
-      setState(() {
-        _status = BumpStatus.error;
-        _msg = 'Nessun buono da inviare. Crea prima da “Create”.';
-      });
-      return;
-    }
-    // salva il payload effimero
-    AppMemory.lastBumpPayload = BumpPayload.fromVoucher(v);
-
-    setState(() {
-      _status = BumpStatus.sent;
-      _msg = 'Segreto inviato (mock): ${v.secret.substring(0, 6)}...';
-    });
+    if (v == null) return;
+    final payload = BumpPayload.fromVoucher(v).toJson();
+    await Nearby.sendJson(payload);
+    await Nearby.stop(); // <— blocca subito advertising/browsing
+    _set(BumpStatus.sent, 'Codice inviato ✔️');
   }
 
-  void _reset() => setState(() {
-    _status = BumpStatus.idle;
-    _msg = null;
-  });
+  Future<void> _reset() async {
+    await Nearby.stop();
+    _set(BumpStatus.idle, null);
+  }
+
+  @override
+  void dispose() {
+    Nearby.stop();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,37 +108,39 @@ class _BumpPageState extends State<BumpPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Bump (Avvicina iPhone)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+          Text(
+            'Bump (${_isSender ? "Mittente" : "Destinatario"})',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: 12),
-          const Text('Demo senza prossimità reale: simula discover → peer found → invia segreto.'),
+          Text(
+            _isSender
+                ? 'Tieni questo iPhone vicino all’altro. Invio automatico del buono quando connessi.'
+                : 'Tieni questo iPhone vicino all’altro. Il buono arriverà automaticamente.',
+          ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               FilledButton.icon(
-                icon: const Icon(Icons.search),
-                label: const Text('Inizia ricerca'),
-                onPressed: _status == BumpStatus.discovering ? null : _startDiscover,
+                icon: const Icon(Icons.radar),
+                label: Text(_isSender ? 'Attiva invio' : 'Cerca vicino'),
+                onPressed: _status == BumpStatus.discovering ? null : _start,
               ),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.send),
-                label: const Text('Invia codice'),
-                onPressed: _status == BumpStatus.peerFound ? _sendSecret : null,
-              ),
-              TextButton.icon(icon: const Icon(Icons.restart_alt), label: const Text('Reset'), onPressed: _reset),
+              TextButton.icon(icon: const Icon(Icons.restart_alt), label: const Text('Stop'), onPressed: _reset),
             ],
           ),
           const SizedBox(height: 12),
           Card(
             child: ListTile(
               leading: Icon(
-                _status == BumpStatus.sent
+                _status == BumpStatus.sent || _status == BumpStatus.received
                     ? Icons.check_circle
                     : _status == BumpStatus.error
                     ? Icons.error_outline
                     : _status == BumpStatus.peerFound
-                    ? Icons.bluetooth_connected
+                    ? Icons.link
                     : _status == BumpStatus.discovering
                     ? Icons.hourglass_bottom
                     : Icons.info_outline,
@@ -97,7 +150,7 @@ class _BumpPageState extends State<BumpPage> {
             ),
           ),
           const SizedBox(height: 12),
-          if (v != null) Text('Ultimo buono: ${v.amount} ETH • h=${v.h.substring(0, 10)}...'),
+          if (_isSender && v != null) Text('Ultimo buono: ${v.amount} ETH • h=${v.h.substring(0, 10)}…'),
         ],
       ),
     );

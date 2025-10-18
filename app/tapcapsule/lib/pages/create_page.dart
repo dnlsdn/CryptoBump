@@ -1,10 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
-import 'package:web3dart/crypto.dart' as w3;
+import 'package:tapcapsule/services/contract_client.dart';
+import 'package:tapcapsule/services/signer_service.dart';
+import 'package:web3dart/crypto.dart' as crypto; // keccak256 + bytesToHex
 import '../models/voucher.dart';
 import '../state/app_memory.dart';
-import 'package:web3dart/web3dart.dart' as w3;
-import '../eth/contract_client.dart';
-import '../utils/eth.dart';
+import '../utils/eth.dart'; // contiene ethToWeiDouble(…)
 import '../config/app_config.dart';
 
 class CreatePage extends StatefulWidget {
@@ -45,6 +47,33 @@ class _CreatePageState extends State<CreatePage> {
     setState(() => _expiry = chosen);
   }
 
+  // === NEW: dialog per impostare la private key del wallet di test (solo RAM)
+  Future<void> _setPkDialog() async {
+    final ctrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Imposta private key (testnet)'),
+        content: TextField(
+          controller: ctrl,
+          decoration: const InputDecoration(hintText: '0x...'),
+          obscureText: true,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annulla')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Usa')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await signer.setPrivateKey(ctrl.text.trim());
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Signer impostato: ${signer.address}')));
+      setState(() {});
+    }
+  }
+
   Future<void> _createOnChain() async {
     FocusScope.of(context).unfocus();
     final amt = double.tryParse(_amountCtrl.text.replaceAll(',', '.'));
@@ -55,6 +84,13 @@ class _CreatePageState extends State<CreatePage> {
       });
       return;
     }
+    if (!signer.isReady) {
+      setState(() {
+        _status = OpStatus.error;
+        _msg = 'Nessun signer. Premi “Imposta chiave privata” e incolla la PK del wallet di test.';
+      });
+      return;
+    }
 
     setState(() {
       _status = OpStatus.working;
@@ -62,33 +98,30 @@ class _CreatePageState extends State<CreatePage> {
     });
 
     try {
-      // 1) prepara secret + h bytes32
-      final secretBytes = Voucher.genSecretBytes(bytes: 32);
+      // 1) Segreto + hash (bytes32)
+      final secretBytes = Voucher.genSecretBytes(bytes: 32); // Uint8List
       final secretB64 = Voucher.encodeSecretB64Url(secretBytes);
-      final hBytes = w3.keccak256(secretBytes); // 32 bytes
-      final hHex = w3.bytesToHex(hBytes, include0x: true);
+      final hBytes = crypto.keccak256(secretBytes); // List<int> (32)
+      final hHex = crypto.bytesToHex(hBytes, include0x: true);
 
-      // 2) importo + expiry
-      final amountWei = ethToWeiDouble(amt);
+      // 2) Importo e scadenza
+      final amountWei = ethToWeiDouble(amt); // BigInt
       final expiry = BigInt.from(_expiry.millisecondsSinceEpoch ~/ 1000);
 
-      // 3) creds (burner)
-      final pk = AppConfig.I.burnerPrivateKey;
-      if (pk == null || pk.isEmpty) {
-        setState(() {
-          _status = OpStatus.error;
-          _msg = 'Burner PK mancante. Aggiungi BURNER_PRIVATE_KEY in app_config.local.json';
-        });
-        return;
-      }
-      final creds = w3.EthPrivateKey.fromHex(pk);
-
-      // 4) chiama il contratto
+      // 3) Client + credenziali (dal signer, non burner)
       final cc = await ContractClient.create();
-      final txHash = await cc.createVoucherETH(hBytes: hBytes, amountWei: amountWei, expiry: expiry, creds: creds);
+      final creds = signer.requireCreds();
+
+      // 4) Chiamata on-chain
+      final txHash = await cc.createVoucherETH(
+        hBytes: hBytes as dynamic, // web3dart accetta Uint8List/List<int>
+        amountWei: amountWei,
+        expiry: expiry,
+        creds: creds,
+      );
       cc.dispose();
 
-      // 5) aggiorna memoria UI
+      // 5) Aggiorna memoria UI
       final v = Voucher(amount: amt, expiry: _expiry, secret: secretB64, h: hHex);
       AppMemory.lastVoucher = v;
 
@@ -99,7 +132,49 @@ class _CreatePageState extends State<CreatePage> {
     } catch (e) {
       setState(() {
         _status = OpStatus.error;
-        _msg = 'Errore creazione: ${e.toString()}';
+        _msg = 'Errore creazione: $e';
+      });
+    }
+  }
+
+  Future<void> _refund() async {
+    final v = AppMemory.lastVoucher;
+    if (v == null) return;
+
+    if (!signer.isReady) {
+      setState(() {
+        _status = OpStatus.error;
+        _msg = 'Nessun signer. Imposta la chiave privata di test.';
+      });
+      return;
+    }
+
+    setState(() {
+      _status = OpStatus.working;
+      _msg = 'Annullamento in corso…';
+    });
+
+    try {
+      // h: "0x" + 64 hex -> bytes32
+      final hexNo0x = v.h.startsWith('0x') ? v.h.substring(2) : v.h;
+      final hBytes = Uint8List.fromList(crypto.hexToBytes(hexNo0x));
+
+      final cc = await ContractClient.create();
+      final tx = await cc.refund(hBytes: hBytes, creds: signer.requireCreds());
+      cc.dispose();
+
+      AppMemory.lastRefundTx = tx;
+      // svuota la memoria locale del buono
+      AppMemory.lastVoucher = null;
+
+      setState(() {
+        _status = OpStatus.success;
+        _msg = 'Rimborsato! tx: $tx';
+      });
+    } catch (e) {
+      setState(() {
+        _status = OpStatus.error;
+        _msg = 'Errore refund: $e';
       });
     }
   }
@@ -113,10 +188,26 @@ class _CreatePageState extends State<CreatePage> {
         children: [
           const Text('Create (Crea buono)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
           const SizedBox(height: 12),
+
+          // === NEW: riga per gestire il signer
+          Row(
+            children: [
+              OutlinedButton.icon(
+                icon: const Icon(Icons.vpn_key),
+                label: Text(signer.isReady ? 'Signer pronto' : 'Imposta chiave privata'),
+                onPressed: _setPkDialog,
+              ),
+              const SizedBox(width: 8),
+              if (signer.isReady)
+                Text('${signer.address!.hex.substring(0, 10)}…', style: const TextStyle(fontFamily: 'monospace')),
+            ],
+          ),
+          const SizedBox(height: 12),
+
           TextField(
             controller: _amountCtrl,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Importo (ETH, solo display)', border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: 'Importo (ETH)', border: OutlineInputBorder()),
           ),
           const SizedBox(height: 12),
           ListTile(
@@ -137,18 +228,28 @@ class _CreatePageState extends State<CreatePage> {
           ),
           const SizedBox(height: 12),
           _StatusBanner(status: _status, message: _msg),
-
-          // Riepilogo a schermo (come richiesto da A2)
-          if (v != null && _status == OpStatus.success) ...[
+          if (v != null) ...[
             const Divider(height: 28),
-            const Text('Dettagli ultimo buono (demo)'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Dettagli ultimo buono'),
+                IconButton(
+                  icon: const Icon(Icons.cancel),
+                  tooltip: v.isExpired ? 'Annulla buono e riprendi i fondi' : 'Disponibile dopo la scadenza',
+                  color: v.isExpired ? Theme.of(context).colorScheme.error : null,
+                  onPressed: (_status == OpStatus.working || !v.isExpired) ? null : _refund,
+                ),
+              ],
+            ),
             Text('importo previsto: ${v.amount} ETH'),
             Text('expiry: ${v.expiry.toLocal()}'),
             Text('h (keccak256): ${v.h}'),
             Text('secret (base64url): ${v.secret}'),
             const SizedBox(height: 8),
-            const Text('⚠️ Demo: il segreto è mostrato solo per test. Non persisterlo su disco.'),
+            const Text('⚠️ Solo per test: non persistere il segreto su disco.'),
           ],
+
           if (_status == OpStatus.success && AppConfig.I.explorerBaseUrl.isNotEmpty && _msg != null) ...[
             const SizedBox(height: 8),
             TextButton.icon(
@@ -157,9 +258,11 @@ class _CreatePageState extends State<CreatePage> {
               onPressed: () {
                 final parts = _msg!.split('tx: ');
                 if (parts.length == 2) {
-                  // final tx = parts[1];
-                  // final url = '${AppConfig.I.explorerBaseUrl}/tx/$tx';
-                  // usa launchUrl se già lo hai, altrimenti per ora niente
+                  final tx = parts[1];
+                  final url = '${AppConfig.I.explorerBaseUrl}/tx/$tx';
+                  debugPrint('Explorer URL: $url');
+                  // Se vuoi aprirlo direttamente:
+                  // await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
                 }
               },
             ),
