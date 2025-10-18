@@ -44,3 +44,15 @@ Contratto che blocca fondi associati all'hash di un segreto. Chi conosce il **se
 - **Stati**: valido / usato / scaduto / rimborsato (via `vouchers[h]` e/o eventi).
 
 > NOTA: qui sono solo specifiche. L’implementazione Solidity arriverà nello STEP successivo.
+## Parametri MVP (DECISI — 2025-10-18)
+- **Asset**: ETH di prova su Base Sepolia (`token = address(0)`).
+- **Importo demo**: `0.001 ETH` ( = `1_000_000_000_000_000` wei ) proposto di default in UI, modificabile.
+- **Scadenza standard**: `24 ore` = `86400` secondi a partire dal `block.timestamp` al momento di `createVoucher`.
+- **Segreto & Hash**:
+  - `secret`: 32 byte casuali (generati off-chain dall’app).
+  - `h = keccak256(secret)`.
+- **Regole di validazione** (da far rispettare in Solidity):
+  - `amount > 0`
+  - `expiry > block.timestamp`
+  - `vouchers[h]` non deve già esistere (h univoco).
+- **Gasless (roadmap)**: in questa prima demo il `redeem` sarà reso gasless via Paymaster di Base; `createVoucher` può restare non-gasless.
