@@ -34,7 +34,11 @@ class AppConfig {
     try {
       confJson = await rootBundle.loadString('assets/config/app_config.local.json');
     } catch (_) {
-      confJson = await rootBundle.loadString('assets/config/app_config.sample.json');
+      try {
+        confJson = await rootBundle.loadString('assets/config/app_config.sample.json');
+      } catch (_) {
+        confJson = await rootBundle.loadString('assets/config/app_config.example.json');
+      }
     }
     final Map<String, dynamic> conf = jsonDecode(confJson);
 
