@@ -81,6 +81,14 @@ class _RedeemPageState extends State<RedeemPage> {
           ),
           const SizedBox(height: 12),
           _Status(status: _status, msg: _msg),
+          if (_status == OpStatus.success) ...[
+            const SizedBox(height: 8),
+            TextButton.icon(
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Apri su explorer (placeholder)'),
+              onPressed: null, // si abilita in Fase 3 con URL reale
+            ),
+          ],
         ],
       ),
     );

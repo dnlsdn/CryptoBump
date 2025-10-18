@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../models/voucher.dart';
 import '../state/app_memory.dart';
 
 enum BumpStatus { idle, discovering, peerFound, sent, error }
