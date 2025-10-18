@@ -1,6 +1,6 @@
 {
   "RPC_URL": "https://base-sepolia.g.alchemy.com/v2/nprInoeFE5Wcp2pV7_PUu",
-  "CONTRACT_ADDRESS": "0xYourVoucherRedeemer",
+  "CONTRACT_ADDRESS": "0xA0bbf7730C9065830c51d2A57b2C0A98d3876bD1",
   "CONTRACT_ABI_PATH": "assets/config/abi.json",
   "CHAIN_ID": 84532,
   "EXPLORER_BASE_URL": "https://sepolia.basescan.org"

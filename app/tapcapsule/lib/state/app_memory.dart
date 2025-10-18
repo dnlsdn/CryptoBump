@@ -10,6 +10,8 @@ class AppMemory {
   /// - lato sender: BumpPayload.fromVoucher(lastVoucher)
   /// - lato receiver: payload ricevuto (secret+h+amount+expiry)
   static BumpPayload? lastBumpPayload;
+  static String? lastCreateTx;
+  static String? lastRedeemTx;
 
   static void clearAll() {
     lastVoucher = null;
