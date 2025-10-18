@@ -1,4 +1,3 @@
-// lib/widgets/section_card.dart
 import 'package:flutter/material.dart';
 
 class SectionCard extends StatelessWidget {

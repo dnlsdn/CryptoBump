@@ -1,4 +1,3 @@
-// lib/services/contract_client.dart
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:web3dart/web3dart.dart';
@@ -24,12 +23,11 @@ class ContractClient {
     return ContractClient._(client, c, c.function('createVoucher'), c.function('redeem'));
   }
 
-  /// createVoucher(h, token=0x0, amount, expiry) con ETH nativo
   Future<String> createVoucherETH({
-    required Uint8List hBytes, // keccak256(secret) (32 bytes)
-    required BigInt amountWei, // importo in wei
-    required BigInt expiry, // timestamp (secondi)
-    required Credentials creds, // il tuo wallet di test (NON burner)
+    required Uint8List hBytes,
+    required BigInt amountWei,
+    required BigInt expiry,
+    required Credentials creds,
   }) async {
     final zero = EthereumAddress.fromHex('0x0000000000000000000000000000000000000000');
     final data = _createF.encodeCall([hBytes, zero, amountWei, expiry]);
@@ -39,13 +37,12 @@ class ContractClient {
       Transaction(
         to: _contract.address,
         data: data,
-        value: EtherAmount.inWei(amountWei), // msg.value = amount
+        value: EtherAmount.inWei(amountWei),
       ),
       chainId: AppConfig.I.chainId,
     );
   }
 
-  /// redeem(secret)
   Future<String> redeem({required Uint8List secretBytes, required Credentials creds}) {
     final data = _redeemF.encodeCall([secretBytes]);
     return _client.sendTransaction(
@@ -58,7 +55,7 @@ class ContractClient {
   void dispose() => _client.dispose();
 
   Future<String> refund({
-    required Uint8List hBytes, // 32 bytes (keccak)
+    required Uint8List hBytes,
     required Credentials creds,
   }) async {
     final refundF = _contract.function('refund');

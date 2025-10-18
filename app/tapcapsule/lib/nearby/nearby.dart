@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/services.dart';
-
-// Per la demo: generiamo/leggiamo il payload dall'app
 import '../config/app_config.dart';
 import '../state/app_memory.dart';
 import '../models/voucher.dart';
@@ -14,7 +12,7 @@ class Nearby {
   static final StreamController<Map<String, dynamic>> _ctrl = StreamController.broadcast();
   static bool _listening = false;
 
-  static _MockNearby? _mock; // istanza mock se demo
+  static _MockNearby? _mock;
 
   static void _emit(Map<String, dynamic> e) => _ctrl.add(e);
 
@@ -75,7 +73,6 @@ class _MockNearby {
 
   Future<void> start({required String role}) async {
     _role = role;
-    // status iniziali
     emit({'type': 'status', 'value': role == 'sender' ? 'advertising' : 'browsing'});
     _t1 = Timer(const Duration(milliseconds: 500), () {
       emit({'type': 'status', 'value': 'connecting'});
@@ -84,7 +81,6 @@ class _MockNearby {
       emit({'type': 'connected', 'peer': 'Demo iPhone'});
     });
 
-    // Se “receiver” e c'è un voucher locale, invialo come se fosse arrivato dall'altro
     _t3 = Timer(const Duration(milliseconds: 1700), () {
       if (_role == 'receiver') {
         final v = AppMemory.lastVoucher;
@@ -97,9 +93,7 @@ class _MockNearby {
   }
 
   Future<void> sendJson(Map<String, dynamic> payload) async {
-    // Conferma di invio
     emit({'type': 'sent'});
-    // “Eco” del payload per simulare il device remoto che lo riceve
     _t3?.cancel();
     _t3 = Timer(const Duration(milliseconds: 700), () {
       emit({'type': 'payload', 'json': jsonEncode(payload)});

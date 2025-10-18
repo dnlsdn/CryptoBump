@@ -1,4 +1,3 @@
-// lib/services/signer_service.dart
 import 'package:web3dart/web3dart.dart';
 
 class SignerService {
@@ -8,7 +7,6 @@ class SignerService {
   bool get isReady => _creds != null;
   EthereumAddress? get address => _addr;
 
-  /// Imposta una private key esadecimale (solo test! NON persistiamo nulla)
   Future<void> setPrivateKey(String hex) async {
     final clean = hex.startsWith('0x') ? hex.substring(2) : hex;
     final c = EthPrivateKey.fromHex(clean);
@@ -24,7 +22,7 @@ class SignerService {
   Credentials requireCreds() {
     final c = _creds;
     if (c == null) {
-      throw StateError('Nessun signer impostato. Inserisci la chiave privata di un wallet di test.');
+      throw StateError('No signer set. Please enter the private key of a test wallet.');
     }
     return c;
   }
