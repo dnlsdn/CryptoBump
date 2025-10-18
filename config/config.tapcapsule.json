@@ -1,0 +1,5 @@
+{
+  "RPC_URL": "https://base-sepolia.g.alchemy.com/v2/YOUR_API_KEY",
+  "CONTRACT_ADDRESS": "0xYourVoucherRedeemer",
+  "CONTRACT_ABI_PATH": "contracts/abi/VoucherRedeemer.json"
+}
