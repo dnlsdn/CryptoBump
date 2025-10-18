@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
-import 'package:web3dart/web3dart.dart' as w3;
+import 'package:web3dart/crypto.dart' as w3;
 
 /// Stati operativi generici per UI (create/redeem)
 enum OpStatus { idle, working, success, error }

@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:web3dart/crypto.dart' as w3;
 import '../models/voucher.dart';
 import '../state/app_memory.dart';
+import 'package:web3dart/web3dart.dart' as w3;
+import '../eth/contract_client.dart';
+import '../utils/eth.dart';
+import '../config/app_config.dart';
 
 class CreatePage extends StatefulWidget {
   const CreatePage({super.key});
@@ -40,7 +45,7 @@ class _CreatePageState extends State<CreatePage> {
     setState(() => _expiry = chosen);
   }
 
-  Future<void> _createMock() async {
+  Future<void> _createOnChain() async {
     FocusScope.of(context).unfocus();
     final amt = double.tryParse(_amountCtrl.text.replaceAll(',', '.'));
     if (amt == null || amt <= 0) {
@@ -50,25 +55,53 @@ class _CreatePageState extends State<CreatePage> {
       });
       return;
     }
+
     setState(() {
       _status = OpStatus.working;
-      _msg = null;
+      _msg = 'Creazione in corso…';
     });
 
-    await Future.delayed(const Duration(milliseconds: 400)); // piccola latenza UI
+    try {
+      // 1) prepara secret + h bytes32
+      final secretBytes = Voucher.genSecretBytes(bytes: 32);
+      final secretB64 = Voucher.encodeSecretB64Url(secretBytes);
+      final hBytes = w3.keccak256(secretBytes); // 32 bytes
+      final hHex = w3.bytesToHex(hBytes, include0x: true);
 
-    // A2: segreto robusto (32 byte) + hash keccak256(secret_bytes)
-    final secretBytes = Voucher.genSecretBytes(bytes: 32);
-    final secretB64 = Voucher.encodeSecretB64Url(secretBytes);
-    final h = Voucher.keccakHex(secretBytes);
+      // 2) importo + expiry
+      final amountWei = ethToWeiDouble(amt);
+      final expiry = BigInt.from(_expiry.millisecondsSinceEpoch ~/ 1000);
 
-    final v = Voucher(amount: amt, expiry: _expiry, secret: secretB64, h: h);
-    AppMemory.lastVoucher = v;
+      // 3) creds (burner)
+      final pk = AppConfig.I.burnerPrivateKey;
+      if (pk == null || pk.isEmpty) {
+        setState(() {
+          _status = OpStatus.error;
+          _msg = 'Burner PK mancante. Aggiungi BURNER_PRIVATE_KEY in app_config.local.json';
+        });
+        return;
+      }
+      final creds = w3.EthPrivateKey.fromHex(pk);
 
-    setState(() {
-      _status = OpStatus.success;
-      _msg = 'Buono (demo) pronto. Passa al tab “Bump”.';
-    });
+      // 4) chiama il contratto
+      final cc = await ContractClient.create();
+      final txHash = await cc.createVoucherETH(hBytes: hBytes, amountWei: amountWei, expiry: expiry, creds: creds);
+      cc.dispose();
+
+      // 5) aggiorna memoria UI
+      final v = Voucher(amount: amt, expiry: _expiry, secret: secretB64, h: hHex);
+      AppMemory.lastVoucher = v;
+
+      setState(() {
+        _status = OpStatus.success;
+        _msg = 'Creato! tx: $txHash';
+      });
+    } catch (e) {
+      setState(() {
+        _status = OpStatus.error;
+        _msg = 'Errore creazione: ${e.toString()}';
+      });
+    }
   }
 
   @override
@@ -99,8 +132,8 @@ class _CreatePageState extends State<CreatePage> {
           const SizedBox(height: 12),
           FilledButton.icon(
             icon: const Icon(Icons.add_box_outlined),
-            label: const Text('Crea buono (mock)'),
-            onPressed: _status == OpStatus.working ? null : _createMock,
+            label: const Text('Crea buono'),
+            onPressed: _status == OpStatus.working ? null : _createOnChain,
           ),
           const SizedBox(height: 12),
           _StatusBanner(status: _status, message: _msg),
@@ -115,6 +148,21 @@ class _CreatePageState extends State<CreatePage> {
             Text('secret (base64url): ${v.secret}'),
             const SizedBox(height: 8),
             const Text('⚠️ Demo: il segreto è mostrato solo per test. Non persisterlo su disco.'),
+          ],
+          if (_status == OpStatus.success && AppConfig.I.explorerBaseUrl.isNotEmpty && _msg != null) ...[
+            const SizedBox(height: 8),
+            TextButton.icon(
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Apri tx su explorer'),
+              onPressed: () {
+                final parts = _msg!.split('tx: ');
+                if (parts.length == 2) {
+                  // final tx = parts[1];
+                  // final url = '${AppConfig.I.explorerBaseUrl}/tx/$tx';
+                  // usa launchUrl se già lo hai, altrimenti per ora niente
+                }
+              },
+            ),
           ],
         ],
       ),

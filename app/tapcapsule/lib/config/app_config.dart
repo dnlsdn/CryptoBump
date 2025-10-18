@@ -9,6 +9,7 @@ class AppConfig {
   final String contractAbi; // stringa JSON ABI
   final int chainId;
   final String explorerBaseUrl;
+  final String? burnerPrivateKey;
 
   AppConfig({
     required this.rpcUrl,
@@ -16,6 +17,7 @@ class AppConfig {
     required this.contractAbi,
     required this.chainId,
     required this.explorerBaseUrl,
+    this.burnerPrivateKey,
   });
 
   static AppConfig? _instance;
@@ -52,6 +54,7 @@ class AppConfig {
       contractAbi: abiString,
       chainId: (conf['CHAIN_ID'] as num?)?.toInt() ?? 84532,
       explorerBaseUrl: (conf['EXPLORER_BASE_URL'] as String?) ?? '',
+      burnerPrivateKey: conf['BURNER_PRIVATE_KEY'] as String?,
     );
 
     if (kDebugMode) {
