@@ -2,6 +2,12 @@
   "name": "smart-contract",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "verify-setup": "hardhat run scripts/verify-setup.ts --network baseSepolia",
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "clean": "hardhat clean"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.3",
     "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^3.0.0",
@@ -10,10 +16,14 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.18.11",
     "chai": "^5.3.3",
+    "dotenv": "^17.2.3",
     "ethers": "^6.15.0",
     "forge-std": "github:foundry-rs/forge-std#v1.9.4",
     "hardhat": "^3.0.7",
     "mocha": "^11.7.4",
     "typescript": "~5.8.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0"
   }
 }

@@ -18,3 +18,17 @@
 
 # Hardhat coverage reports
 /coverage
+
+# 🔐 Environment variables & secrets (CRITICAL - DO NOT COMMIT)
+.env
+.env.*
+!.env.example
+secrets/
+*.key
+*.pem
+
+# Hardhat Ignition deployments (may contain sensitive data)
+/ignition/deployments
+
+# Test/debug artifacts
+/.openzeppelin
