@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tapcapsule/ui/theme.dart';
 import 'pages/create_page.dart';
 import 'pages/bump_page.dart';
 import 'pages/redeem_page.dart';
@@ -19,7 +20,7 @@ class TapCapsuleApp extends StatelessWidget {
     return MaterialApp(
       title: 'TapCapsule',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2058FF)), useMaterial3: true),
+      theme: AppTheme.light(),
       home: const _HomeShell(),
     );
   }

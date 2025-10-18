@@ -45,7 +45,28 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-		<key>NSLocalNetworkUsageDescription</key>
+	<key>NSLocalNetworkUsageDescription</key>
 		<string>TapCapsule uses the local network to discover and connect to a nearby iPhone, so you can transfer the voucher by bringing the phones close together</string>
+	<key>NSBonjourServices</key>
+		<array>
+			<string>_tapcapsule._tcp</string>
+		</array>
+	<key>NSAppTransportSecurity</key>
+		<dict>
+			<key>NSAllowsArbitraryLoads</key>
+			<false />
+			<key>NSExceptionDomains</key>
+			<dict>
+				<key>base-sepolia.g.alchemy.com</key>
+				<dict>
+					<key>NSIncludesSubdomains</key>
+					<true />
+					<key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+					<false />
+					<key>NSTemporaryExceptionMinimumTLSVersion</key>
+					<string>TLSv1.2</string>
+				</dict>
+			</dict>
+		</dict>
 </dict>
 </plist>
