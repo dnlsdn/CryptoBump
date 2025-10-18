@@ -1,9 +1,14 @@
 import type { HardhatUserConfig } from "hardhat/config";
 
 import "@nomicfoundation/hardhat-toolbox-mocha-ethers";
-import { configVariable } from "hardhat/config";
+import hardhatIgnitionEthers from "@nomicfoundation/hardhat-ignition-ethers";
+import * as dotenv from "dotenv";
+
+// Load .env file
+dotenv.config();
 
 const config: HardhatUserConfig = {
+  plugins: [hardhatIgnitionEthers],
   solidity: {
     profiles: {
       default: {
@@ -34,8 +39,8 @@ const config: HardhatUserConfig = {
     baseSepolia: {
       type: "http",
       chainType: "op",
-      url: configVariable("BASE_SEPOLIA_RPC_URL"),
-      accounts: [configVariable("PRIVATE_KEY")],
+      url: process.env.BASE_SEPOLIA_RPC_URL || "",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 84532,
     },
   },
