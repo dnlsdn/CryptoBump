@@ -1,8 +1,12 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:tapcapsule/pages/bump_page.dart';
 import 'package:tapcapsule/services/contract_client.dart';
 import 'package:tapcapsule/services/signer_service.dart';
+import 'package:tapcapsule/utils/ui_safety.dart';
+import 'package:tapcapsule/widgets/section_card.dart';
 import 'package:web3dart/crypto.dart' as crypto; // keccak256 + bytesToHex
 import '../models/voucher.dart';
 import '../state/app_memory.dart';
@@ -28,6 +32,7 @@ class _CreatePageState extends State<CreatePage> {
   }
 
   Future<void> _pickExpiry() async {
+    hideAllTextMenusAndKeyboard();
     final now = DateTime.now();
     final date = await showDatePicker(
       context: context,
@@ -59,6 +64,7 @@ class _CreatePageState extends State<CreatePage> {
           decoration: const InputDecoration(hintText: '0x...'),
           obscureText: true,
           autofocus: true,
+          onTapOutside: (_) => hideAllTextMenusAndKeyboard(),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annulla')),
@@ -75,6 +81,7 @@ class _CreatePageState extends State<CreatePage> {
   }
 
   Future<void> _createOnChain() async {
+    hideAllTextMenusAndKeyboard();
     FocusScope.of(context).unfocus();
     final amt = double.tryParse(_amountCtrl.text.replaceAll(',', '.'));
     if (amt == null || amt <= 0) {
@@ -138,6 +145,7 @@ class _CreatePageState extends State<CreatePage> {
   }
 
   Future<void> _refund() async {
+    hideAllTextMenusAndKeyboard();
     final v = AppMemory.lastVoucher;
     if (v == null) return;
 
@@ -181,94 +189,120 @@ class _CreatePageState extends State<CreatePage> {
 
   @override
   Widget build(BuildContext context) {
-    final v = AppMemory.lastVoucher;
-    return Padding(
+    return ListView(
       padding: const EdgeInsets.all(16),
-      child: ListView(
-        children: [
-          const Text('Create (Crea buono)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 12),
+      children: [
+        stepChips(0),
+        const SizedBox(height: 12),
 
-          // === NEW: riga per gestire il signer
-          Row(
-            children: [
-              OutlinedButton.icon(
-                icon: const Icon(Icons.vpn_key),
-                label: Text(signer.isReady ? 'Signer pronto' : 'Imposta chiave privata'),
-                onPressed: _setPkDialog,
-              ),
-              const SizedBox(width: 8),
-              if (signer.isReady)
-                Text('${signer.address!.hex.substring(0, 10)}…', style: const TextStyle(fontFamily: 'monospace')),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          TextField(
-            controller: _amountCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Importo (ETH)', border: OutlineInputBorder()),
-          ),
-          const SizedBox(height: 12),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Scadenza'),
-            subtitle: Text(_expiry.toLocal().toString()),
-            trailing: OutlinedButton.icon(
-              icon: const Icon(Icons.edit_outlined),
-              label: const Text('Modifica'),
-              onPressed: _pickExpiry,
-            ),
-          ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            icon: const Icon(Icons.add_box_outlined),
-            label: const Text('Crea buono'),
-            onPressed: _status == OpStatus.working ? null : _createOnChain,
-          ),
-          const SizedBox(height: 12),
-          _StatusBanner(status: _status, message: _msg),
-          if (v != null) ...[
-            const Divider(height: 28),
+        SectionCard(
+          title: 'Crea un buono',
+          caption: 'Blocca ETH fino alla scadenza. Il destinatario incassa col codice segreto.',
+          children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Dettagli ultimo buono'),
-                IconButton(
-                  icon: const Icon(Icons.cancel),
-                  tooltip: v.isExpired ? 'Annulla buono e riprendi i fondi' : 'Disponibile dopo la scadenza',
-                  color: v.isExpired ? Theme.of(context).colorScheme.error : null,
-                  onPressed: (_status == OpStatus.working || !v.isExpired) ? null : _refund,
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.vpn_key),
+                  label: Text(signer.isReady ? 'Signer pronto' : 'Imposta chiave privata'),
+                  onPressed: _setPkDialog,
                 ),
+                const SizedBox(width: 8),
+                if (signer.isReady)
+                  Text('${signer.address!.hex.substring(0, 10)}…', style: const TextStyle(fontFamily: 'monospace')),
               ],
             ),
-            Text('importo previsto: ${v.amount} ETH'),
-            Text('expiry: ${v.expiry.toLocal()}'),
-            Text('h (keccak256): ${v.h}'),
-            Text('secret (base64url): ${v.secret}'),
-            const SizedBox(height: 8),
-            const Text('⚠️ Solo per test: non persistere il segreto su disco.'),
-          ],
-
-          if (_status == OpStatus.success && AppConfig.I.explorerBaseUrl.isNotEmpty && _msg != null) ...[
-            const SizedBox(height: 8),
-            TextButton.icon(
-              icon: const Icon(Icons.open_in_new),
-              label: const Text('Apri tx su explorer'),
-              onPressed: () {
-                final parts = _msg!.split('tx: ');
-                if (parts.length == 2) {
-                  final tx = parts[1];
-                  final url = '${AppConfig.I.explorerBaseUrl}/tx/$tx';
-                  debugPrint('Explorer URL: $url');
-                  // Se vuoi aprirlo direttamente:
-                  // await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                }
-              },
+            TextField(
+              controller: _amountCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Importo', prefixText: 'Ξ ', helperText: 'Esempio 0.005'),
+              onTapOutside: (_) => hideAllTextMenusAndKeyboard(),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Scadenza'),
+              subtitle: Text(_expiry.toLocal().toString()),
+              trailing: FilledButton.tonalIcon(
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Modifica'),
+                onPressed: _pickExpiry,
+              ),
+            ),
+            FilledButton.icon(
+              icon: const Icon(Icons.add_box_outlined),
+              label: const Text('Crea buono'),
+              onPressed: _status == OpStatus.working ? null : _createOnChain,
             ),
           ],
+        ),
+
+        const SizedBox(height: 8),
+        _StatusBanner(status: _status, message: _msg),
+
+        if (AppMemory.lastVoucher != null) ...[
+          const SizedBox(height: 8),
+          SectionCard(
+            title: 'Ultimo buono',
+            trailing: IconButton(
+              icon: const Icon(Icons.cancel),
+              tooltip: AppMemory.lastVoucher!.isExpired
+                  ? 'Annulla buono e riprendi i fondi'
+                  : 'Disponibile dopo la scadenza',
+              color: AppMemory.lastVoucher!.isExpired ? Theme.of(context).colorScheme.error : null,
+              onPressed: (_status == OpStatus.working || !AppMemory.lastVoucher!.isExpired) ? null : _refund,
+            ),
+            children: [
+              Text(
+                '${AppMemory.lastVoucher!.amount} ETH',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  Chip(label: Text('Scade: ${AppMemory.lastVoucher!.expiry.toLocal()}')),
+                  Chip(label: Text('h: ${AppMemory.lastVoucher!.shortH}')),
+                ],
+              ),
+              SelectableText(
+                'secret: ${AppMemory.lastVoucher!.secret}',
+                style: const TextStyle(fontFamily: 'monospace'),
+              ),
+              Row(
+                children: [
+                  TextButton.icon(
+                    icon: const Icon(Icons.copy_all),
+                    label: const Text('Copia secret'),
+                    onPressed: () {
+                      hideAllTextMenusAndKeyboard();
+                      Clipboard.setData(ClipboardData(text: AppMemory.lastVoucher!.secret));
+                    },
+                  ),
+                  const Spacer(),
+                  FilledButton.tonalIcon(
+                    icon: const Icon(Icons.near_me_outlined),
+                    label: const Text('Passa a Bump'),
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BumpPage())),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ],
-      ),
+
+        if (_status == OpStatus.success && AppConfig.I.explorerBaseUrl.isNotEmpty && _msg != null)
+          TextButton.icon(
+            icon: const Icon(Icons.open_in_new),
+            label: const Text('Apri tx su explorer'),
+            onPressed: () {
+              final parts = _msg!.split('tx: ');
+              if (parts.length == 2) {
+                final tx = parts[1];
+                final url = '${AppConfig.I.explorerBaseUrl}/tx/$tx';
+                debugPrint('Explorer URL: $url');
+              }
+            },
+          ),
+      ],
     );
   }
 }

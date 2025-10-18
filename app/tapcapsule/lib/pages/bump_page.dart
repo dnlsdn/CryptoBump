@@ -1,6 +1,9 @@
 // lib/pages/bump_page.dart
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:tapcapsule/utils/ui_safety.dart';
+import 'package:tapcapsule/widgets/section_card.dart';
 import '../models/voucher.dart';
 import '../state/app_memory.dart';
 import '../nearby/nearby.dart';
@@ -18,12 +21,14 @@ class _BumpPageState extends State<BumpPage> {
   BumpStatus _status = BumpStatus.idle;
   String? _msg;
   late final bool _isSender;
+  late final StreamSubscription<Map<String, dynamic>> _sub;
+  bool _navigated = false; // evita push doppi
 
   @override
   void initState() {
     super.initState();
     _isSender = AppMemory.lastVoucher != null;
-    Nearby.events.listen(_onEvent);
+    _sub = Nearby.events.listen(_onEvent); // ⬅️ salva subscription
   }
 
   void _onEvent(Map<String, dynamic> e) {
@@ -46,17 +51,15 @@ class _BumpPageState extends State<BumpPage> {
         final payload = BumpPayload.fromJson(map);
         AppMemory.lastBumpPayload = payload;
         _set(BumpStatus.received, 'Buono ricevuto ✔️');
-        if (mounted) {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => RedeemPage(
-                secretPrefill: payload.secret,
-                autoRedeem: true, // <— incassa subito
-              ),
-            ),
-          );
+        if (mounted && !_navigated) {
+          _navigated = true;
+          hideAllTextMenusAndKeyboard(); // ⬅️ chiudi eventuali menu iOS
+          Navigator.of(context)
+              .push(MaterialPageRoute(builder: (_) => RedeemPage(secretPrefill: payload.secret, autoRedeem: true)))
+              .then((_) => _navigated = false);
         }
         break;
+
       case 'disconnected':
         _set(BumpStatus.error, 'Connessione persa');
         break;
@@ -96,6 +99,7 @@ class _BumpPageState extends State<BumpPage> {
 
   @override
   void dispose() {
+    _sub.cancel(); // ⬅️ evita listener duplicati
     Nearby.stop();
     super.dispose();
   }
@@ -103,56 +107,70 @@ class _BumpPageState extends State<BumpPage> {
   @override
   Widget build(BuildContext context) {
     final v = AppMemory.lastVoucher;
-    return Padding(
+    return ListView(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Bump (${_isSender ? "Mittente" : "Destinatario"})',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _isSender
-                ? 'Tieni questo iPhone vicino all’altro. Invio automatico del buono quando connessi.'
-                : 'Tieni questo iPhone vicino all’altro. Il buono arriverà automaticamente.',
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FilledButton.icon(
-                icon: const Icon(Icons.radar),
-                label: Text(_isSender ? 'Attiva invio' : 'Cerca vicino'),
-                onPressed: _status == BumpStatus.discovering ? null : _start,
-              ),
-              TextButton.icon(icon: const Icon(Icons.restart_alt), label: const Text('Stop'), onPressed: _reset),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: ListTile(
-              leading: Icon(
-                _status == BumpStatus.sent || _status == BumpStatus.received
-                    ? Icons.check_circle
-                    : _status == BumpStatus.error
-                    ? Icons.error_outline
-                    : _status == BumpStatus.peerFound
-                    ? Icons.link
-                    : _status == BumpStatus.discovering
-                    ? Icons.hourglass_bottom
-                    : Icons.info_outline,
-              ),
-              title: Text(_status.toString().split('.').last),
-              subtitle: _msg != null ? Text(_msg!) : null,
+      children: [
+        stepChips(1),
+        const SizedBox(height: 12),
+
+        SectionCard(
+          title: _isSender ? 'Invia vicino' : 'Ricevi vicino',
+          caption: _isSender
+              ? 'Tieni i telefoni vicini. Il buono viene inviato automaticamente quando connessi.'
+              : 'Tieni i telefoni vicini. Il buono arriverà automaticamente.',
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  icon: const Icon(Icons.radar),
+                  label: Text(_isSender ? 'Attiva invio' : 'Cerca vicino'),
+                  onPressed: _status == BumpStatus.discovering ? null : _start,
+                ),
+                TextButton.icon(icon: const Icon(Icons.restart_alt), label: const Text('Stop'), onPressed: _reset),
+              ],
             ),
+          ],
+        ),
+
+        Card(
+          child: ListTile(
+            leading: Icon(
+              _status == BumpStatus.sent || _status == BumpStatus.received
+                  ? Icons.check_circle
+                  : _status == BumpStatus.error
+                  ? Icons.error_outline
+                  : _status == BumpStatus.peerFound
+                  ? Icons.link
+                  : _status == BumpStatus.discovering
+                  ? Icons.hourglass_bottom
+                  : Icons.info_outline,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            title: Text(_status.toString().split('.').last, style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: _msg != null ? Text(_msg!) : null,
           ),
-          const SizedBox(height: 12),
-          if (_isSender && v != null) Text('Ultimo buono: ${v.amount} ETH • h=${v.h.substring(0, 10)}…'),
-        ],
-      ),
+        ),
+
+        if (_isSender && v != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Chip(label: Text('Buono: ${v.amount} ETH • h=${v.shortH}')),
+          ),
+      ],
     );
   }
+}
+
+// in qualunque file UI:
+Widget stepChips(int current) {
+  const labels = ['1 Crea', '2 Bump', '3 Incassa'];
+  return Wrap(
+    spacing: 8,
+    children: [
+      for (int i = 0; i < labels.length; i++)
+        ChoiceChip(label: Text(labels[i]), selected: current == i, showCheckmark: false, onSelected: (_) {}),
+    ],
+  );
 }

@@ -2,9 +2,13 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:tapcapsule/config/app_config.dart';
+import 'package:tapcapsule/pages/bump_page.dart';
 import 'package:tapcapsule/services/contract_client.dart';
 import 'package:tapcapsule/services/signer_service.dart';
+import 'package:tapcapsule/utils/ui_safety.dart';
+import 'package:tapcapsule/widgets/section_card.dart';
 import '../models/voucher.dart';
 import '../state/app_memory.dart';
 
@@ -23,6 +27,7 @@ class _RedeemPageState extends State<RedeemPage> {
   String? _msg;
 
   Future<void> _redeemOnChain() async {
+    hideAllTextMenusAndKeyboard();
     FocusScope.of(context).unfocus();
     final input = _secretCtrl.text.trim();
     if (input.isEmpty) {
@@ -81,6 +86,7 @@ class _RedeemPageState extends State<RedeemPage> {
     // auto-redeem appena la UI è pronta
     if (widget.autoRedeem && _secretCtrl.text.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        hideAllTextMenusAndKeyboard();
         _redeemOnChain();
       });
     }
@@ -96,44 +102,64 @@ class _RedeemPageState extends State<RedeemPage> {
   Widget build(BuildContext context) {
     final p = AppMemory.lastBumpPayload;
     final v = AppMemory.lastVoucher;
-    return Padding(
+    return ListView(
       padding: const EdgeInsets.all(16),
-      child: ListView(
-        children: [
-          const Text('Redeem (Incassa)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-          if (p != null) ...[
-            const SizedBox(height: 8),
-            Text('Previsto: ${p.amount} ETH • scade: ${p.expiry.toLocal()}'),
-          ] else if (v != null) ...[
-            const SizedBox(height: 8),
-            Text('Previsto: ${v.amount} ETH • scade: ${v.expiry.toLocal()}'),
-          ],
-          const SizedBox(height: 12),
-          TextField(
-            controller: _secretCtrl,
-            decoration: const InputDecoration(labelText: 'Codice segreto', border: OutlineInputBorder()),
+      children: [
+        stepChips(2),
+        const SizedBox(height: 12),
+
+        if (p != null || v != null)
+          SectionCard(
+            title: 'Dettagli previsti',
+            children: [
+              Text(
+                '${(p?.amount ?? v!.amount)} ETH',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              Chip(label: Text('Scade: ${(p?.expiry ?? v!.expiry).toLocal()}')),
+            ],
           ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            icon: const Icon(Icons.download_done_outlined),
-            label: const Text('Incassa ora'),
-            onPressed: _status == OpStatus.working ? null : _redeemOnChain,
-          ),
-          const SizedBox(height: 12),
-          _Status(status: _status, msg: _msg),
-          if (_status == OpStatus.success && _msg?.contains('tx: ') == true) ...[
-            TextButton.icon(
-              icon: const Icon(Icons.open_in_new),
-              label: const Text('Apri tx su explorer'),
-              onPressed: () {
-                final tx = _msg!.split('tx: ').last.trim();
-                final url = '${AppConfig.I.explorerBaseUrl}/tx/$tx';
-                debugPrint('Explorer URL: $url');
-              },
+
+        SectionCard(
+          title: 'Incassa buono',
+          caption: 'Inserisci o incolla il codice segreto ricevuto.',
+          children: [
+            TextField(
+              controller: _secretCtrl,
+              decoration: InputDecoration(
+                labelText: 'Codice segreto',
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.paste),
+                  onPressed: () async {
+                    hideAllTextMenusAndKeyboard();
+                    final data = await Clipboard.getData('text/plain');
+                    if (data?.text != null) _secretCtrl.text = data!.text!;
+                  },
+                ),
+              ),
+            ),
+            FilledButton.icon(
+              icon: const Icon(Icons.download_done_outlined),
+              label: const Text('Incassa ora'),
+              onPressed: _status == OpStatus.working ? null : _redeemOnChain,
             ),
           ],
-        ],
-      ),
+        ),
+
+        const SizedBox(height: 8),
+        _Status(status: _status, msg: _msg),
+
+        if (_status == OpStatus.success && _msg?.contains('tx: ') == true)
+          TextButton.icon(
+            icon: const Icon(Icons.open_in_new),
+            label: const Text('Apri tx su explorer'),
+            onPressed: () {
+              final tx = _msg!.split('tx: ').last.trim();
+              final url = '${AppConfig.I.explorerBaseUrl}/tx/$tx';
+              debugPrint('Explorer URL: $url');
+            },
+          ),
+      ],
     );
   }
 }
