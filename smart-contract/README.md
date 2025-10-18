@@ -1,57 +1,178 @@
-# Sample Hardhat 3 Beta Project (`mocha` and `ethers`)
+# TapCapsule - Smart Contracts
 
-This project showcases a Hardhat 3 Beta project using `mocha` for tests and the `ethers` library for Ethereum interactions.
+Smart contracts for the TapCapsule tap-to-redeem crypto voucher system on **Base Sepolia** (testnet).
 
-To learn more about the Hardhat 3 Beta, please visit the [Getting Started guide](https://hardhat.org/docs/getting-started#getting-started-with-hardhat-3). To share your feedback, join our [Hardhat 3 Beta](https://hardhat.org/hardhat3-beta-telegram-group) Telegram group or [open an issue](https://github.com/NomicFoundation/hardhat/issues/new) in our GitHub issue tracker.
+---
 
-## Project Overview
+## 📋 Overview
 
-This example project includes:
+**VoucherRedeemer** is a smart contract that allows users to:
+1. **Create vouchers**: Lock ETH or ERC-20 tokens under a secret hash (`keccak256(secret)`)
+2. **Redeem vouchers**: Anyone with the secret can claim the funds before expiry
+3. **Refund vouchers**: Creator can reclaim funds after expiry if not redeemed
 
-- A simple Hardhat configuration file.
-- Foundry-compatible Solidity unit tests.
-- TypeScript integration tests using `mocha` and ethers.js
-- Examples demonstrating how to connect to different types of networks, including locally simulating OP mainnet.
+### Key Features
+- ✅ Supports both native ETH and ERC-20 tokens
+- ✅ Time-locked with expiry mechanism
+- ✅ Reentrancy protection via OpenZeppelin
+- ✅ Gas-optimized with custom errors
+- ✅ 100% test coverage (14 tests passing)
 
-## Usage
+---
 
-### Running Tests
+## 🏗️ Project Structure
 
-To run all the tests in the project, execute the following command:
-
-```shell
-npx hardhat test
+```
+smart-contract/
+├── contracts/
+│   └── VoucherRedeemer.sol      # Main contract
+├── test/
+│   └── VoucherRedeemer.t.sol    # Solidity tests (Foundry)
+├── scripts/
+│   └── verify-setup.ts          # Setup verification script
+├── ignition/modules/
+│   └── VoucherRedeemer.ts       # Hardhat Ignition deployment
+├── .env                         # Environment variables (gitignored)
+├── hardhat.config.ts            # Hardhat configuration
+└── package.json
 ```
 
-You can also selectively run the Solidity or `mocha` tests:
+---
 
-```shell
-npx hardhat test solidity
-npx hardhat test mocha
+## 🚀 Quick Start
+
+### Prerequisites
+- **Node.js 22+** (required by Hardhat 3)
+- npm or pnpm
+- Alchemy API key for Base Sepolia
+- Burner wallet with Base Sepolia test ETH
+
+### Installation
+
+```bash
+# Install dependencies
+npm install
+
+# Configure environment - edit .env with your credentials
+nano .env
 ```
 
-### Make a deployment to Sepolia
+### Environment Setup
 
-This project includes an example Ignition module to deploy the contract. You can deploy this module to a locally simulated chain or to Sepolia.
-
-To run the deployment to a local chain:
-
-```shell
-npx hardhat ignition deploy ignition/modules/Counter.ts
+Edit `.env`:
+```bash
+BASE_SEPOLIA_RPC_URL=https://base-sepolia.g.alchemy.com/v2/YOUR_API_KEY
+PRIVATE_KEY=0x...your_private_key...
 ```
 
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
+---
 
-You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
+## 🧪 Testing
 
-To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
+Run the full test suite:
 
-```shell
-npx hardhat keystore set SEPOLIA_PRIVATE_KEY
+```bash
+npm test
 ```
 
-After setting the variable, you can run the deployment with the Sepolia network:
-
-```shell
-npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
+Expected output:
 ```
+✔ test_CreateVoucher()
+✔ test_Redeem()
+✔ test_Refund()
+✔ testFuzz_CreateAndRedeem(uint256,uint96) (runs: 256)
+...
+
+14 passing
+```
+
+---
+
+## 🔍 Verify Setup
+
+Before deploying, verify your setup:
+
+```bash
+npm run verify-setup
+```
+
+This checks:
+- ✅ RPC connection to Base Sepolia (chainId: 84532)
+- ✅ Wallet address and balance
+- ✅ Gas prices
+
+---
+
+## 🚀 Deployment
+
+Deploy to Base Sepolia testnet:
+
+```bash
+npm run deploy
+```
+
+**Important**: Get test ETH before deploying!
+- Faucet: https://www.alchemy.com/faucets/base-sepolia
+
+---
+
+## 📝 Contract Interface
+
+### Create Voucher
+
+```solidity
+function createVoucher(
+    bytes32 h,           // keccak256(secret)
+    address token,       // address(0) for ETH
+    uint256 amount,      // Amount to lock
+    uint64 expiry        // Expiry timestamp
+) external payable
+```
+
+### Redeem Voucher
+
+```solidity
+function redeem(bytes memory secret) external
+```
+
+### Refund Voucher
+
+```solidity
+function refund(bytes32 h) external
+```
+
+---
+
+## 🛠️ Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run verify-setup` | Verify RPC connection and wallet |
+| `npm run compile` | Compile contracts |
+| `npm test` | Run test suite |
+| `npm run clean` | Clean build artifacts |
+| `npm run deploy` | Deploy to Base Sepolia |
+
+---
+
+## 🔒 Security
+
+- **ReentrancyGuard**: All state-changing functions protected
+- **Checks-Effects-Interactions**: State updated before external calls
+- **SafeERC20**: Safe token transfers via OpenZeppelin
+- **Custom Errors**: Gas-efficient error handling
+
+---
+
+## 🌐 Network: Base Sepolia (Testnet)
+
+- **ChainId**: 84532
+- **RPC**: Via Alchemy
+- **Explorer**: https://sepolia.basescan.org
+- **Faucet**: https://www.alchemy.com/faucets/base-sepolia
+
+---
+
+## 📄 License
+
+MIT

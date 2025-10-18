@@ -6,7 +6,8 @@
     "verify-setup": "hardhat run scripts/verify-setup.ts --network baseSepolia",
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "clean": "hardhat clean"
+    "clean": "hardhat clean",
+    "deploy": "hardhat ignition deploy ignition/modules/VoucherRedeemer.ts --network baseSepolia"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.3",
