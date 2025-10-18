@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tapcapsule/pages/bump_page.dart';
@@ -33,52 +34,53 @@ class _CreatePageState extends State<CreatePage> {
 
   Future<void> _pickExpiry() async {
     hideAllTextMenusAndKeyboard();
-    final now = DateTime.now();
-    final date = await showDatePicker(
+    DateTime temp = _expiry;
+
+    final chosen = await showModalBottomSheet<DateTime>(
       context: context,
-      initialDate: _expiry,
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 30)),
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        return SizedBox(
+          height: 220 + MediaQuery.of(ctx).padding.bottom,
+          child: Column(
+            children: [
+              // barra comandi stile iOS
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: Row(
+                  children: [
+                    TextButton(child: const Text('Annulla'), onPressed: () => Navigator.pop(ctx)),
+                    const Spacer(),
+                    TextButton(child: const Text('Fine'), onPressed: () => Navigator.pop(ctx, temp)),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.dateAndTime,
+                  initialDateTime: _expiry,
+                  minimumDate: DateTime.now(),
+                  maximumDate: DateTime.now().add(const Duration(days: 30)),
+                  use24hFormat: true,
+                  onDateTimeChanged: (d) => temp = d,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
-    if (date == null) return;
-    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(_expiry));
-    final chosen = DateTime(
-      date.year,
-      date.month,
-      date.day,
-      time?.hour ?? _expiry.hour,
-      time?.minute ?? _expiry.minute,
-    );
-    setState(() => _expiry = chosen);
+
+    if (chosen != null) {
+      setState(() => _expiry = chosen);
+    }
   }
 
   // === NEW: dialog per impostare la private key del wallet di test (solo RAM)
-  Future<void> _setPkDialog() async {
-    final ctrl = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Imposta private key (testnet)'),
-        content: TextField(
-          controller: ctrl,
-          decoration: const InputDecoration(hintText: '0x...'),
-          obscureText: true,
-          autofocus: true,
-          onTapOutside: (_) => hideAllTextMenusAndKeyboard(),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annulla')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Usa')),
-        ],
-      ),
-    );
-    if (ok == true) {
-      await signer.setPrivateKey(ctrl.text.trim());
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Signer impostato: ${signer.address}')));
-      setState(() {});
-    }
-  }
 
   Future<void> _createOnChain() async {
     hideAllTextMenusAndKeyboard();
@@ -136,6 +138,13 @@ class _CreatePageState extends State<CreatePage> {
         _status = OpStatus.success;
         _msg = 'Creato! tx: $txHash';
       });
+
+      // dopo il setState di success
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: const Text('Buono creato'), backgroundColor: Colors.green));
+      }
     } catch (e) {
       setState(() {
         _status = OpStatus.error;
@@ -199,18 +208,6 @@ class _CreatePageState extends State<CreatePage> {
           title: 'Crea un buono',
           caption: 'Blocca ETH fino alla scadenza. Il destinatario incassa col codice segreto.',
           children: [
-            Row(
-              children: [
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.vpn_key),
-                  label: Text(signer.isReady ? 'Signer pronto' : 'Imposta chiave privata'),
-                  onPressed: _setPkDialog,
-                ),
-                const SizedBox(width: 8),
-                if (signer.isReady)
-                  Text('${signer.address!.hex.substring(0, 10)}…', style: const TextStyle(fontFamily: 'monospace')),
-              ],
-            ),
             TextField(
               controller: _amountCtrl,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),

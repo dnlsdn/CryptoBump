@@ -10,6 +10,7 @@ class AppConfig {
   final int chainId;
   final String explorerBaseUrl;
   final String? burnerPrivateKey;
+  final bool demoNearby;
 
   AppConfig({
     required this.rpcUrl,
@@ -18,6 +19,7 @@ class AppConfig {
     required this.chainId,
     required this.explorerBaseUrl,
     this.burnerPrivateKey,
+    this.demoNearby = false,
   });
 
   static AppConfig? _instance;
@@ -55,6 +57,7 @@ class AppConfig {
       chainId: (conf['CHAIN_ID'] as num?)?.toInt() ?? 84532,
       explorerBaseUrl: (conf['EXPLORER_BASE_URL'] as String?) ?? '',
       burnerPrivateKey: conf['BURNER_PRIVATE_KEY'] as String?,
+      demoNearby: (conf['DEMO_NEARBY'] as bool?) ?? false,
     );
 
     if (kDebugMode) {

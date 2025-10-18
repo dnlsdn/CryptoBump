@@ -22,7 +22,6 @@ class _BumpPageState extends State<BumpPage> {
   String? _msg;
   late final bool _isSender;
   late final StreamSubscription<Map<String, dynamic>> _sub;
-  bool _navigated = false; // evita push doppi
 
   @override
   void initState() {
@@ -51,17 +50,23 @@ class _BumpPageState extends State<BumpPage> {
         final payload = BumpPayload.fromJson(map);
         AppMemory.lastBumpPayload = payload;
         _set(BumpStatus.received, 'Buono ricevuto ✔️');
-        if (mounted && !_navigated) {
-          _navigated = true;
-          hideAllTextMenusAndKeyboard(); // ⬅️ chiudi eventuali menu iOS
-          Navigator.of(context)
-              .push(MaterialPageRoute(builder: (_) => RedeemPage(secretPrefill: payload.secret, autoRedeem: true)))
-              .then((_) => _navigated = false);
+
+        // chiudi la sessione *dopo* aver ricevuto
+        Nearby.stop();
+
+        // feedback non invadente
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(backgroundColor: Colors.green, content: Text('Buono ricevuto. Puoi incassare quando vuoi.')),
+          );
         }
         break;
-
       case 'disconnected':
-        _set(BumpStatus.error, 'Connessione persa');
+        if (_status == BumpStatus.sent || _status == BumpStatus.received) {
+          _set(BumpStatus.idle, 'Sessione terminata'); // chiusura ok
+        } else {
+          _set(BumpStatus.error, 'Connessione persa');
+        }
         break;
       case 'error':
         _set(BumpStatus.error, e['message']?.toString() ?? 'Errore');
@@ -88,7 +93,7 @@ class _BumpPageState extends State<BumpPage> {
     if (v == null) return;
     final payload = BumpPayload.fromVoucher(v).toJson();
     await Nearby.sendJson(payload);
-    await Nearby.stop(); // <— blocca subito advertising/browsing
+    // niente stop qui ✅ lascia arrivare l'eco 'payload'
     _set(BumpStatus.sent, 'Codice inviato ✔️');
   }
 
@@ -106,7 +111,7 @@ class _BumpPageState extends State<BumpPage> {
 
   @override
   Widget build(BuildContext context) {
-    final v = AppMemory.lastVoucher;
+    final p = AppMemory.lastBumpPayload;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -153,10 +158,32 @@ class _BumpPageState extends State<BumpPage> {
           ),
         ),
 
-        if (_isSender && v != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Chip(label: Text('Buono: ${v.amount} ETH • h=${v.shortH}')),
+        if (_status == BumpStatus.received && p != null)
+          SectionCard(
+            title: 'Buono ricevuto',
+            caption: 'Premi quando vuoi per incassare.',
+            children: [
+              Text(
+                '${p.amount} ETH',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              Chip(label: Text('Scade: ${p.expiry.toLocal()}')),
+              FilledButton.icon(
+                icon: const Icon(Icons.download_done_outlined),
+                label: const Text('Vai a Redeem'),
+                onPressed: () {
+                  hideAllTextMenusAndKeyboard();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => RedeemPage(
+                        secretPrefill: p.secret,
+                        autoRedeem: false, // ⬅️ niente auto-redeem
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
       ],
     );
@@ -164,13 +191,18 @@ class _BumpPageState extends State<BumpPage> {
 }
 
 // in qualunque file UI:
+// in qualunque file UI:
 Widget stepChips(int current) {
   const labels = ['1 Crea', '2 Bump', '3 Incassa'];
-  return Wrap(
-    spacing: 8,
-    children: [
-      for (int i = 0; i < labels.length; i++)
-        ChoiceChip(label: Text(labels[i]), selected: current == i, showCheckmark: false, onSelected: (_) {}),
-    ],
+  return Material(
+    // <-- fornisce l’antenato Material richiesto dai ChoiceChip
+    type: MaterialType.transparency,
+    child: Wrap(
+      spacing: 8,
+      children: [
+        for (int i = 0; i < labels.length; i++)
+          ChoiceChip(label: Text(labels[i]), selected: current == i, showCheckmark: false, onSelected: (_) {}),
+      ],
+    ),
   );
 }
