@@ -6,7 +6,7 @@
 /// CONTRACT_ABI: ABI JSON del contratto (stringa oppure percorso file).
 class AppConfig {
   // Esempio: "https://base-sepolia.g.alchemy.com/v2/<API_KEY>"
-  static const String RPC_URL = '<PUT_RPC_URL_HERE>';
+  static const String RPC_URL = 'https://base-sepolia.g.alchemy.com/v2/nprInoeFE5Wcp2pV7_PUu';
 
   // Esempio: "0x1234...abcd" (quando Persona B fa il deploy)
   static const String CONTRACT_ADDRESS = '<PUT_CONTRACT_ADDRESS_HERE>';

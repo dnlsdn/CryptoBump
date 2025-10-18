@@ -23,3 +23,11 @@ contracts/ignition/
 .idea/
 .vscode/
 *.iml
+
+# TapCapsule local config (non committare segreti)
+app/config/rpc_url.txt
+app/config/*.local.*
+
+# TapCapsule local secrets (root)
+config/rpc_url.txt
+config/*.local.*

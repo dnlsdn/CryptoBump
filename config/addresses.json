@@ -1,0 +1,9 @@
+{
+  "base_sepolia": {
+    "chain_id": 84532,
+    "voucher_redeemer": "<PUT_CONTRACT_ADDRESS_HERE>",
+    "explorer_base_url": ""
+    /* es. "https://sepolia.basescan.org" oppure Blockscout per Base Sepolia.
+       Lascia vuoto: lo riempiamo quando Persona B conferma l'explorer. */
+  }
+}
