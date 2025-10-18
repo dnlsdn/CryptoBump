@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:tapcapsule/services/contract_client.dart';
 import 'package:tapcapsule/services/signer_service.dart';
@@ -135,6 +137,48 @@ class _CreatePageState extends State<CreatePage> {
     }
   }
 
+  Future<void> _refund() async {
+    final v = AppMemory.lastVoucher;
+    if (v == null) return;
+
+    if (!signer.isReady) {
+      setState(() {
+        _status = OpStatus.error;
+        _msg = 'Nessun signer. Imposta la chiave privata di test.';
+      });
+      return;
+    }
+
+    setState(() {
+      _status = OpStatus.working;
+      _msg = 'Annullamento in corso…';
+    });
+
+    try {
+      // h: "0x" + 64 hex -> bytes32
+      final hexNo0x = v.h.startsWith('0x') ? v.h.substring(2) : v.h;
+      final hBytes = Uint8List.fromList(crypto.hexToBytes(hexNo0x));
+
+      final cc = await ContractClient.create();
+      final tx = await cc.refund(hBytes: hBytes, creds: signer.requireCreds());
+      cc.dispose();
+
+      AppMemory.lastRefundTx = tx;
+      // svuota la memoria locale del buono
+      AppMemory.lastVoucher = null;
+
+      setState(() {
+        _status = OpStatus.success;
+        _msg = 'Rimborsato! tx: $tx';
+      });
+    } catch (e) {
+      setState(() {
+        _status = OpStatus.error;
+        _msg = 'Errore refund: $e';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final v = AppMemory.lastVoucher;
@@ -184,10 +228,20 @@ class _CreatePageState extends State<CreatePage> {
           ),
           const SizedBox(height: 12),
           _StatusBanner(status: _status, message: _msg),
-
-          if (v != null && _status == OpStatus.success) ...[
+          if (v != null) ...[
             const Divider(height: 28),
-            const Text('Dettagli ultimo buono'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Dettagli ultimo buono'),
+                IconButton(
+                  icon: const Icon(Icons.cancel),
+                  tooltip: v.isExpired ? 'Annulla buono e riprendi i fondi' : 'Disponibile dopo la scadenza',
+                  color: v.isExpired ? Theme.of(context).colorScheme.error : null,
+                  onPressed: (_status == OpStatus.working || !v.isExpired) ? null : _refund,
+                ),
+              ],
+            ),
             Text('importo previsto: ${v.amount} ETH'),
             Text('expiry: ${v.expiry.toLocal()}'),
             Text('h (keccak256): ${v.h}'),

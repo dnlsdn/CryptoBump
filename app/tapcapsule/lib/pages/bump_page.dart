@@ -46,9 +46,15 @@ class _BumpPageState extends State<BumpPage> {
         final payload = BumpPayload.fromJson(map);
         AppMemory.lastBumpPayload = payload;
         _set(BumpStatus.received, 'Buono ricevuto ✔️');
-        // Apri direttamente Redeem
         if (mounted) {
-          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RedeemPage()));
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => RedeemPage(
+                secretPrefill: payload.secret,
+                autoRedeem: true, // <— incassa subito
+              ),
+            ),
+          );
         }
         break;
       case 'disconnected':
@@ -79,6 +85,8 @@ class _BumpPageState extends State<BumpPage> {
     if (v == null) return;
     final payload = BumpPayload.fromVoucher(v).toJson();
     await Nearby.sendJson(payload);
+    await Nearby.stop(); // <— blocca subito advertising/browsing
+    _set(BumpStatus.sent, 'Codice inviato ✔️');
   }
 
   Future<void> _reset() async {

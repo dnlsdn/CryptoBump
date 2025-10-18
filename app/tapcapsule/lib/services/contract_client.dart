@@ -56,4 +56,17 @@ class ContractClient {
   }
 
   void dispose() => _client.dispose();
+
+  Future<String> refund({
+    required Uint8List hBytes, // 32 bytes (keccak)
+    required Credentials creds,
+  }) async {
+    final refundF = _contract.function('refund');
+    final data = refundF.encodeCall([hBytes]);
+    return _client.sendTransaction(
+      creds,
+      Transaction(to: _contract.address, data: data),
+      chainId: AppConfig.I.chainId,
+    );
+  }
 }

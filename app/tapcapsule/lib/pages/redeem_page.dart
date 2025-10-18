@@ -9,7 +9,10 @@ import '../models/voucher.dart';
 import '../state/app_memory.dart';
 
 class RedeemPage extends StatefulWidget {
-  const RedeemPage({super.key});
+  final String? secretPrefill;
+  final bool autoRedeem;
+
+  const RedeemPage({super.key, this.secretPrefill, this.autoRedeem = false});
   @override
   State<RedeemPage> createState() => _RedeemPageState();
 }
@@ -70,12 +73,16 @@ class _RedeemPageState extends State<RedeemPage> {
   @override
   void initState() {
     super.initState();
-    final v = AppMemory.lastVoucher;
+    // prefill da bump, oppure dai fallback che già avevi
     final p = AppMemory.lastBumpPayload;
-    if (p != null) {
-      _secretCtrl.text = p.secret;
-    } else if (v != null) {
-      _secretCtrl.text = v.secret;
+    final v = AppMemory.lastVoucher;
+    _secretCtrl.text = widget.secretPrefill ?? p?.secret ?? v?.secret ?? '';
+
+    // auto-redeem appena la UI è pronta
+    if (widget.autoRedeem && _secretCtrl.text.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _redeemOnChain();
+      });
     }
   }
 

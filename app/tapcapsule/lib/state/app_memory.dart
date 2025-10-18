@@ -12,6 +12,7 @@ class AppMemory {
   static BumpPayload? lastBumpPayload;
   static String? lastCreateTx;
   static String? lastRedeemTx;
+  static String? lastRefundTx;
 
   static void clearAll() {
     lastVoucher = null;
