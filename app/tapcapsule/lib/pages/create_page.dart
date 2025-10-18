@@ -54,16 +54,20 @@ class _CreatePageState extends State<CreatePage> {
       _status = OpStatus.working;
       _msg = null;
     });
-    await Future.delayed(const Duration(seconds: 1)); // finta latenza UI
 
-    final secret = Voucher.genSecret();
-    final h = Voucher.fakeHash(secret);
-    final v = Voucher(amount: amt, expiry: _expiry, secret: secret, h: h);
+    await Future.delayed(const Duration(milliseconds: 400)); // piccola latenza UI
+
+    // A2: segreto robusto (32 byte) + hash keccak256(secret_bytes)
+    final secretBytes = Voucher.genSecretBytes(bytes: 32);
+    final secretB64 = Voucher.encodeSecretB64Url(secretBytes);
+    final h = Voucher.keccakHex(secretBytes);
+
+    final v = Voucher(amount: amt, expiry: _expiry, secret: secretB64, h: h);
     AppMemory.lastVoucher = v;
 
     setState(() {
       _status = OpStatus.success;
-      _msg = 'Buono creato (mock). Passa al tab “Bump”.';
+      _msg = 'Buono (demo) pronto. Passa al tab “Bump”.';
     });
   }
 
@@ -100,15 +104,17 @@ class _CreatePageState extends State<CreatePage> {
           ),
           const SizedBox(height: 12),
           _StatusBanner(status: _status, message: _msg),
+
+          // Riepilogo a schermo (come richiesto da A2)
           if (v != null && _status == OpStatus.success) ...[
             const Divider(height: 28),
             const Text('Dettagli ultimo buono (demo)'),
-            Text('importo: ${v.amount} ETH'),
+            Text('importo previsto: ${v.amount} ETH'),
             Text('expiry: ${v.expiry.toLocal()}'),
-            Text('h: ${v.h}'),
-            Text('secret: ${v.secret}'),
+            Text('h (keccak256): ${v.h}'),
+            Text('secret (base64url): ${v.secret}'),
             const SizedBox(height: 8),
-            const Text('⚠️ Demo: il segreto è mostrato solo per test.'),
+            const Text('⚠️ Demo: il segreto è mostrato solo per test. Non persisterlo su disco.'),
           ],
         ],
       ),
