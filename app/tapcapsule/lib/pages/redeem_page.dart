@@ -18,7 +18,11 @@ class _RedeemPageState extends State<RedeemPage> {
     super.initState();
     final v = AppMemory.lastVoucher;
     final p = AppMemory.lastBumpPayload;
-    if (v != null) _secretCtrl.text = v.secret; // demo: auto-precompila
+    if (p != null) {
+      _secretCtrl.text = p.secret;
+    } else if (v != null) {
+      _secretCtrl.text = v.secret;
+    }
   }
 
   @override
@@ -59,15 +63,16 @@ class _RedeemPageState extends State<RedeemPage> {
 
   @override
   Widget build(BuildContext context) {
+    final p = AppMemory.lastBumpPayload;
     final v = AppMemory.lastVoucher;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: ListView(
         children: [
           const Text('Redeem (Incassa)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-          if (v != null) ...[
+          if (p != null) ...[
             const SizedBox(height: 8),
-            Text('Previsto: ${v.amount} ETH • scade: ${v.expiry.toLocal()}'),
+            Text('Previsto: ${p.amount} ETH • scade: ${p.expiry.toLocal()}'),
           ] else if (v != null) ...[
             const SizedBox(height: 8),
             Text('Previsto: ${v.amount} ETH • scade: ${v.expiry.toLocal()}'),
