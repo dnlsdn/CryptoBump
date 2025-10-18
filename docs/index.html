@@ -284,7 +284,8 @@
             background: rgba(255, 68, 68, 0.05);
             border-radius: 20px;
             padding: 4rem 2rem;
-            margin: 2rem;
+            margin: 2rem auto;
+            max-width: 1200px;
         }
 
         .problem-grid {
@@ -336,6 +337,8 @@
             background: rgba(255, 255, 255, 0.02);
             border-radius: 20px;
             padding: 4rem 2rem;
+            margin: 0 auto;
+            max-width: 1200px;
         }
 
         .steps {
@@ -439,8 +442,9 @@
             background: rgba(0, 245, 160, 0.05);
             border-radius: 20px;
             padding: 3rem;
-            margin: 3rem 0;
+            margin: 3rem auto;
             border: 2px solid rgba(0, 245, 160, 0.2);
+            max-width: 1200px;
         }
 
         .contract-details {
@@ -525,6 +529,94 @@
             color: var(--accent);
         }
 
+        /* Architecture Flow */
+        .architecture-flow {
+            max-width: 1000px;
+            margin: 3rem auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .flow-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .flow-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 2rem;
+            min-width: 200px;
+            transition: all 0.3s;
+        }
+
+        .flow-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(32, 88, 255, 0.3);
+        }
+
+        .flow-card.sender {
+            border-color: var(--accent);
+        }
+
+        .flow-card.receiver {
+            border-color: var(--success);
+        }
+
+        .flow-card.contract {
+            border-color: var(--secondary);
+            background: rgba(123, 97, 255, 0.1);
+        }
+
+        .flow-card.bump {
+            border-color: var(--accent);
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .flow-card h4 {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .flow-card.sender h4 {
+            color: var(--accent);
+        }
+
+        .flow-card.receiver h4 {
+            color: var(--success);
+        }
+
+        .flow-card.contract h4 {
+            color: var(--secondary);
+        }
+
+        .flow-card.bump h4 {
+            color: var(--accent);
+        }
+
+        .flow-card p {
+            font-size: 0.9rem;
+            color: rgba(248, 249, 250, 0.8);
+            margin: 0.5rem 0;
+        }
+
+        .flow-arrow {
+            font-size: 2rem;
+            color: var(--accent);
+        }
+
+        .flow-arrow-down {
+            text-align: center;
+            font-size: 2rem;
+            color: var(--accent);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .nav-links {
@@ -550,6 +642,10 @@
 
             section {
                 padding: 4rem 1rem;
+            }
+
+            .flow-arrow {
+                transform: rotate(90deg);
             }
         }
 
@@ -781,31 +877,66 @@
     </section>
 
     <section style="text-align: center; padding: 4rem 2rem;">
-        <h2>Architecture Overview</h2>
-        <div style="background: rgba(255, 255, 255, 0.05); border-radius: 20px; padding: 3rem; margin-top: 2rem; max-width: 800px; margin-left: auto; margin-right: auto;">
-            <pre style="text-align: left; overflow-x: auto; font-size: 0.9rem; line-height: 1.8;">
-<span style="color: var(--accent);">Sender (Alice)</span>                    <span style="color: var(--success);">Receiver (Bob)</span>
-     │                                   │
-     ├─► Generate secret (32 bytes)     │
-     │                                   │
-     ├─► createVoucher(hash, ETH)       │
-     │         ↓                         │
-     │   ┌─────────────────┐             │
-     │   │ Smart Contract  │             │
-     │   │  Base Sepolia   │             │
-     │   └─────────────────┘             │
-     │                                   │
-     ├─► <span style="color: var(--accent);">📱 Bump Phones 📱</span> ◄──────────┤
-     │   (Multipeer P2P)                 │
-     │                                   │
-     │                              ◄────┤ Receive secret
-     │                                   │
-     │                              ◄────┤ redeem(secret)
-     │                                   │
-     │                                   ├─► ✅ Verify hash
-     │                                   │
-     │                                   └─► 💰 Receive ETH
-            </pre>
+        <h2>How It Works: Complete Flow</h2>
+        <div class="architecture-flow">
+            <!-- Step 1: Alice Creates -->
+            <div class="flow-row">
+                <div class="flow-card sender">
+                    <h4>👤 Alice (Sender)</h4>
+                    <p>🔐 Generates random secret (32 bytes)</p>
+                    <p>🔒 Computes keccak256(secret) = hash</p>
+                    <p>💸 Locks 0.001 ETH in contract</p>
+                </div>
+            </div>
+
+            <div class="flow-arrow-down">↓</div>
+
+            <!-- Step 2: Smart Contract -->
+            <div class="flow-row">
+                <div class="flow-card contract">
+                    <h4>📜 Smart Contract</h4>
+                    <p><strong>Base Sepolia L2</strong></p>
+                    <p>Stores: vouchers[hash] = {</p>
+                    <p style="margin-left: 1rem;">creator: Alice</p>
+                    <p style="margin-left: 1rem;">amount: 0.001 ETH</p>
+                    <p style="margin-left: 1rem;">expiry: 24h</p>
+                    <p>}</p>
+                </div>
+            </div>
+
+            <div class="flow-arrow-down">↓</div>
+
+            <!-- Step 3: Bump -->
+            <div class="flow-row">
+                <div class="flow-card bump">
+                    <h4>📱 Bump Transfer</h4>
+                    <p><strong>Multipeer Connectivity</strong></p>
+                    <p>Alice touches Bob's iPhone</p>
+                    <p>Secret transferred P2P (encrypted)</p>
+                    <p>No internet needed ✨</p>
+                </div>
+            </div>
+
+            <div class="flow-arrow-down">↓</div>
+
+            <!-- Step 4: Bob Redeems -->
+            <div class="flow-row">
+                <div class="flow-card receiver">
+                    <h4>👤 Bob (Receiver)</h4>
+                    <p>📲 Receives secret on his device</p>
+                    <p>🔓 Calls contract.redeem(secret)</p>
+                    <p>✅ Contract verifies hash matches</p>
+                    <p>💰 <strong>Bob receives 0.001 ETH!</strong></p>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 3rem; padding: 2rem; background: rgba(255, 255, 255, 0.03); border-radius: 15px; max-width: 600px; margin-left: auto; margin-right: auto;">
+            <h3 style="color: var(--accent); margin-bottom: 1rem;">🔐 Security Highlights</h3>
+            <p style="margin: 0.5rem 0;">✅ Secret never stored on-chain (only hash)</p>
+            <p style="margin: 0.5rem 0;">✅ One-time use (cannot redeem twice)</p>
+            <p style="margin: 0.5rem 0;">✅ Time-locked (24h expiry for refund)</p>
+            <p style="margin: 0.5rem 0;">✅ Trustless (no intermediaries)</p>
         </div>
     </section>
 
