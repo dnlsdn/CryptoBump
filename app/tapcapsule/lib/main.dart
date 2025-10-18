@@ -162,11 +162,6 @@ class _HomeShellState extends State<_HomeShell> {
                           try {
                             await signer.setPrivateKey(ctrl.text.trim());
                             if (mounted) setState(() {});
-                            if (mounted) {
-                              ScaffoldMessenger.of(
-                                context,
-                              ).showSnackBar(SnackBar(content: Text('Signer set: ${signer.address}')));
-                            }
                             Navigator.pop(ctx);
                           } catch (_) {
                             ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Invalid key')));
