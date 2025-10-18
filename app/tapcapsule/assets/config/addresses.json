@@ -1,7 +1,10 @@
 {
   "base_sepolia": {
     "chain_id": 84532,
-    "voucher_redeemer": "<PUT_CONTRACT_ADDRESS_HERE>",
-    "explorer_base_url": "https://sepolia.basescan.org"
+    "voucher_redeemer": "0xA0bbf7730C9065830c51d2A57b2C0A98d3876bD1",
+    "explorer_base_url": "https://sepolia.basescan.org",
+    "rpc_url": "https://base-sepolia.g.alchemy.com/v2/",
+    "deployed_at": "2025-10-18",
+    "network_name": "Base Sepolia Testnet"
   }
 }
