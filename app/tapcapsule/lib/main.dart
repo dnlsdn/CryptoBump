@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'pages/create_page.dart';
 import 'pages/bump_page.dart';
 import 'pages/redeem_page.dart';
+import 'config/app_config.dart';
+import 'widgets/network_probe.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await AppConfig.load(); // <— NEW
   runApp(const TapCapsuleApp());
 }
 
@@ -22,7 +26,7 @@ class TapCapsuleApp extends StatelessWidget {
 }
 
 class _HomeShell extends StatefulWidget {
-  const _HomeShell({super.key});
+  const _HomeShell();
 
   @override
   State<_HomeShell> createState() => _HomeShellState();
@@ -38,7 +42,15 @@ class _HomeShellState extends State<_HomeShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(_titles[_index])),
-      body: _pages[_index],
+      body: Column(
+        children: [
+          // === NEW: banner di connessione rete in alto, visibile ovunque
+          const Padding(padding: EdgeInsets.fromLTRB(16, 16, 16, 0), child: NetworkProbe()),
+          const SizedBox(height: 8),
+          const Divider(height: 1),
+          Expanded(child: _pages[_index]),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         destinations: const [

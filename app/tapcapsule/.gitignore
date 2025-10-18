@@ -46,3 +46,4 @@ app.*.map.json
 
 # Local config (non committare segreti / chiavi API)
 config/config.json
+assets/config/app_config.local.json
