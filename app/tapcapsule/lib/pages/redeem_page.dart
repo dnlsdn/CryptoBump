@@ -1,4 +1,10 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:tapcapsule/config/app_config.dart';
+import 'package:tapcapsule/services/contract_client.dart';
+import 'package:tapcapsule/services/signer_service.dart';
 import '../models/voucher.dart';
 import '../state/app_memory.dart';
 
@@ -12,6 +18,54 @@ class _RedeemPageState extends State<RedeemPage> {
   final _secretCtrl = TextEditingController();
   OpStatus _status = OpStatus.idle;
   String? _msg;
+
+  Future<void> _redeemOnChain() async {
+    FocusScope.of(context).unfocus();
+    final input = _secretCtrl.text.trim();
+    if (input.isEmpty) {
+      setState(() {
+        _status = OpStatus.error;
+        _msg = 'Codice segreto mancante.';
+      });
+      return;
+    }
+    if (!signer.isReady) {
+      setState(() {
+        _status = OpStatus.error;
+        _msg = 'Nessun signer. Imposta una chiave privata di test.';
+      });
+      return;
+    }
+
+    setState(() {
+      _status = OpStatus.working;
+      _msg = 'Invio redeem…';
+    });
+
+    try {
+      Uint8List secretBytes;
+      try {
+        secretBytes = Uint8List.fromList(base64Url.decode(input));
+      } catch (_) {
+        secretBytes = Uint8List.fromList(utf8.encode(input));
+      }
+
+      final cc = await ContractClient.create();
+      final tx = await cc.redeem(secretBytes: secretBytes, creds: signer.requireCreds());
+      cc.dispose();
+
+      AppMemory.lastRedeemTx = tx;
+      setState(() {
+        _status = OpStatus.success;
+        _msg = 'Incassato! tx: $tx';
+      });
+    } catch (e) {
+      setState(() {
+        _status = OpStatus.error;
+        _msg = 'Errore redeem: $e';
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -29,36 +83,6 @@ class _RedeemPageState extends State<RedeemPage> {
   void dispose() {
     _secretCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _redeemMock() async {
-    FocusScope.of(context).unfocus();
-    final input = _secretCtrl.text.trim();
-    if (input.isEmpty) {
-      setState(() {
-        _status = OpStatus.error;
-        _msg = 'Inserisci il codice segreto.';
-      });
-      return;
-    }
-    setState(() {
-      _status = OpStatus.working;
-      _msg = null;
-    });
-    await Future.delayed(const Duration(seconds: 1));
-
-    final v = AppMemory.lastVoucher;
-    if (v != null && input == v.secret) {
-      setState(() {
-        _status = OpStatus.success;
-        _msg = 'Incassato (mock). Apri explorer nella Fase 3.';
-      });
-    } else {
-      setState(() {
-        _status = OpStatus.error;
-        _msg = 'Segreto errato o buono non trovato.';
-      });
-    }
   }
 
   @override
@@ -85,17 +109,20 @@ class _RedeemPageState extends State<RedeemPage> {
           const SizedBox(height: 12),
           FilledButton.icon(
             icon: const Icon(Icons.download_done_outlined),
-            label: const Text('Incassa (mock)'),
-            onPressed: _status == OpStatus.working ? null : _redeemMock,
+            label: const Text('Incassa ora'),
+            onPressed: _status == OpStatus.working ? null : _redeemOnChain,
           ),
           const SizedBox(height: 12),
           _Status(status: _status, msg: _msg),
-          if (_status == OpStatus.success) ...[
-            const SizedBox(height: 8),
+          if (_status == OpStatus.success && _msg?.contains('tx: ') == true) ...[
             TextButton.icon(
               icon: const Icon(Icons.open_in_new),
-              label: const Text('Apri su explorer (placeholder)'),
-              onPressed: null, // si abilita in Fase 3 con URL reale
+              label: const Text('Apri tx su explorer'),
+              onPressed: () {
+                final tx = _msg!.split('tx: ').last.trim();
+                final url = '${AppConfig.I.explorerBaseUrl}/tx/$tx';
+                debugPrint('Explorer URL: $url');
+              },
             ),
           ],
         ],
