@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:tapcapsule/services/contract_client.dart';
 import 'package:tapcapsule/services/signer_service.dart';
 import 'package:web3dart/crypto.dart' as crypto; // keccak256 + bytesToHex
-
 import '../models/voucher.dart';
 import '../state/app_memory.dart';
-
-import '../eth/contract_client.dart'; // adegua il path se diverso
 import '../utils/eth.dart'; // contiene ethToWeiDouble(…)
 import '../config/app_config.dart';
 
