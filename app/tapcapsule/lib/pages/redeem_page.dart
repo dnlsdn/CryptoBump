@@ -17,6 +17,7 @@ class _RedeemPageState extends State<RedeemPage> {
   void initState() {
     super.initState();
     final v = AppMemory.lastVoucher;
+    final p = AppMemory.lastBumpPayload;
     if (v != null) _secretCtrl.text = v.secret; // demo: auto-precompila
   }
 
@@ -65,6 +66,9 @@ class _RedeemPageState extends State<RedeemPage> {
         children: [
           const Text('Redeem (Incassa)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
           if (v != null) ...[
+            const SizedBox(height: 8),
+            Text('Previsto: ${v.amount} ETH • scade: ${v.expiry.toLocal()}'),
+          ] else if (v != null) ...[
             const SizedBox(height: 8),
             Text('Previsto: ${v.amount} ETH • scade: ${v.expiry.toLocal()}'),
           ],

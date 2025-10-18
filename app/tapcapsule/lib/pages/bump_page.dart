@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tapcapsule/models/voucher.dart';
 import '../state/app_memory.dart';
 
 enum BumpStatus { idle, discovering, peerFound, sent, error }
@@ -34,6 +35,9 @@ class _BumpPageState extends State<BumpPage> {
       });
       return;
     }
+    // salva il payload effimero
+    AppMemory.lastBumpPayload = BumpPayload.fromVoucher(v);
+
     setState(() {
       _status = BumpStatus.sent;
       _msg = 'Segreto inviato (mock): ${v.secret.substring(0, 6)}...';
