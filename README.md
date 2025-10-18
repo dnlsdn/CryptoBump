@@ -1,4 +1,4 @@
-# TapCapsule
+# CryptoBump
 
 **Tap-to-redeem crypto vouchers with iPhone proximity.**
 
@@ -38,11 +38,11 @@ All on-chain. Base Sepolia testnet.
 ## Project Structure
 
 ```
-TapCapsule/
+CryptoBump/
 ├── smart-contract/       # Solidity + Hardhat
 │   ├── contracts/VoucherRedeemer.sol
 │   └── test/VoucherRedeemer.t.sol
-├── app/tapcapsule/      # Flutter app (iOS)
+├── app/CryptoBump/      # Flutter app (iOS)
 ├── config/
 │   ├── addresses.json   # Deployed contract address
 │   └── abi.json        # Contract ABI
@@ -71,7 +71,7 @@ npm run verify-setup
 npm test
 
 # 3. Flutter app
-cd ../app/tapcapsule
+cd ../app/CryptoBump
 flutter pub get
 flutter run
 ```

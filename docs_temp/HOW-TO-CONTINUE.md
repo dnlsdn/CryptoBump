@@ -1,6 +1,6 @@
 # Come Continuare
 
-Guida pratica per riprendere il lavoro su TapCapsule.
+Guida pratica per riprendere il lavoro su CryptoBump.
 
 ---
 
@@ -54,7 +54,7 @@ npm run clean
 ### Flutter App
 
 ```bash
-cd app/tapcapsule
+cd app/CryptoBump
 
 # Installa dipendenze
 flutter pub get

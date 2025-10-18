@@ -1,4 +1,4 @@
-# TapCapsule Smart Contract - Setup Guide
+# CryptoBump Smart Contract - Setup Guide
 
 ## 🚀 Quick Start
 
@@ -15,7 +15,7 @@ You need to add:
 
 **BASE_SEPOLIA_RPC_URL**: Get from Alchemy Dashboard
 - Go to: https://dashboard.alchemy.com
-- Create new App: "TapCapsule"
+- Create new App: "CryptoBump"
 - Chain: Base Sepolia
 - Copy the HTTPS URL
 
@@ -49,7 +49,7 @@ This will check:
 
 Expected output:
 ```
-🔍 TapCapsule - Verifying Setup...
+🔍 CryptoBump - Verifying Setup...
 
 📡 Network Connection:
    ✓ Connected to chainId: 84532

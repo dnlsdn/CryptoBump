@@ -2,7 +2,7 @@
 
 ## Il Progetto
 
-**TapCapsule** = App per mandare crypto "bumpando" due iPhone.
+**CryptoBump** = App per mandare crypto "bumpando" due iPhone.
 
 ### Come Funziona
 1. Persona A crea un voucher (es. 0.001 ETH)
@@ -35,7 +35,7 @@
 ## Struttura Progetto
 
 ```
-TapCapsule/
+CryptoBump/
 ├── smart-contract/        # Contratti Solidity + Hardhat
 │   ├── contracts/
 │   │   └── VoucherRedeemer.sol
@@ -43,7 +43,7 @@ TapCapsule/
 │   │   └── VoucherRedeemer.t.sol
 │   └── .env               # API keys (MAI committare)
 │
-├── app/tapcapsule/        # App Flutter (iOS)
+├── app/CryptoBump/        # App Flutter (iOS)
 │   └── lib/
 │
 ├── config/
