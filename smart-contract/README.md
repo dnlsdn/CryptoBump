@@ -1,6 +1,6 @@
-# TapCapsule - Smart Contracts
+# CryptoBump - Smart Contracts
 
-Smart contracts for the TapCapsule tap-to-redeem crypto voucher system on **Base Sepolia** (testnet).
+Smart contracts for the CryptoBump tap-to-redeem crypto voucher system on **Base Sepolia** (testnet).
 
 ---
 
