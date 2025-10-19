@@ -3,9 +3,11 @@ import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:tapcapsule/pages/bump_page.dart';
 import 'package:tapcapsule/services/contract_client.dart';
 import 'package:tapcapsule/services/signer_service.dart';
+import 'package:tapcapsule/services/demo_hints_service.dart';
 import 'package:tapcapsule/utils/ui_safety.dart';
 import 'package:tapcapsule/widgets/section_card.dart';
 import 'package:web3dart/crypto.dart' as crypto;
@@ -15,7 +17,8 @@ import '../utils/eth.dart';
 import '../config/app_config.dart';
 
 class CreatePage extends StatefulWidget {
-  const CreatePage({super.key});
+  final void Function(int)? onNavigateToTab;
+  const CreatePage({super.key, this.onNavigateToTab});
   @override
   State<CreatePage> createState() => _CreatePageState();
 }
@@ -80,6 +83,13 @@ class _CreatePageState extends State<CreatePage> {
   }
 
   Future<void> _createOnChain() async {
+    if (kIsWeb) {
+      demoHints.show(
+        'Creating a crypto voucher on-chain with your specified amount',
+        position: DemoHintPosition.right,
+      );
+    }
+
     hideAllTextMenusAndKeyboard();
     FocusScope.of(context).unfocus();
     final amt = double.tryParse(_amountCtrl.text.replaceAll(',', '.'));
@@ -131,10 +141,20 @@ class _CreatePageState extends State<CreatePage> {
         _msg = 'Created! tx: $txHash';
       });
 
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: const Text('Voucher created'), backgroundColor: Colors.green));
+      if (kIsWeb) {
+        demoHints.show(
+          'Voucher created on Base L2! Secret is ready to send via Multipeer',
+          position: DemoHintPosition.right,
+        );
+        Future.delayed(const Duration(seconds: 4), () {
+          if (kIsWeb) demoHints.hide();
+        });
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: const Text('Voucher created'), backgroundColor: Colors.green));
+        }
       }
     } catch (e) {
       setState(() {
@@ -214,8 +234,8 @@ class _CreatePageState extends State<CreatePage> {
               ),
             ),
             FilledButton.icon(
-              icon: const Icon(Icons.add_box_outlined),
-              label: const Text('Create voucher'),
+              icon: const Icon(Icons.receipt_long),
+              label: const Text('Create Voucher'),
               onPressed: _status == OpStatus.working ? null : _createOnChain,
             ),
           ],
@@ -256,18 +276,37 @@ class _CreatePageState extends State<CreatePage> {
               Row(
                 children: [
                   TextButton.icon(
-                    icon: const Icon(Icons.copy_all),
-                    label: const Text('Copy secret'),
+                    icon: const Icon(Icons.copy_all, size: 18),
+                    label: const Text('Copy', style: TextStyle(fontSize: 12)),
                     onPressed: () {
                       hideAllTextMenusAndKeyboard();
                       Clipboard.setData(ClipboardData(text: AppMemory.lastVoucher!.secret));
                     },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
                   ),
                   const Spacer(),
-                  FilledButton.tonalIcon(
-                    icon: const Icon(Icons.near_me_outlined),
-                    label: const Text('Go to Bump'),
-                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BumpPage())),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.swap_horiz, size: 18),
+                    label: const Text('Send Nearby', style: TextStyle(fontSize: 12)),
+                    onPressed: () {
+                      if (kIsWeb) {
+                        demoHints.show(
+                          'Bump two iPhones to transfer the secret peer-to-peer via encrypted Multipeer',
+                          position: DemoHintPosition.right,
+                        );
+                        Future.delayed(const Duration(seconds: 3), () {
+                          if (kIsWeb) demoHints.hide();
+                        });
+                      }
+                      if (widget.onNavigateToTab != null) {
+                        widget.onNavigateToTab!(1); // Navigate to Bump tab (index 1)
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
                   ),
                 ],
               ),

@@ -3,10 +3,12 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:tapcapsule/config/app_config.dart';
 import 'package:tapcapsule/pages/bump_page.dart';
 import 'package:tapcapsule/services/contract_client.dart';
 import 'package:tapcapsule/services/signer_service.dart';
+import 'package:tapcapsule/services/demo_hints_service.dart';
 import 'package:tapcapsule/utils/ui_safety.dart';
 import 'package:tapcapsule/widgets/section_card.dart';
 import '../models/voucher.dart';
@@ -15,8 +17,9 @@ import '../state/app_memory.dart';
 class RedeemPage extends StatefulWidget {
   final String? secretPrefill;
   final bool autoRedeem;
+  final void Function(int)? onNavigateToTab;
 
-  const RedeemPage({super.key, this.secretPrefill, this.autoRedeem = false});
+  const RedeemPage({super.key, this.secretPrefill, this.autoRedeem = false, this.onNavigateToTab});
   @override
   State<RedeemPage> createState() => _RedeemPageState();
 }
@@ -27,6 +30,13 @@ class _RedeemPageState extends State<RedeemPage> {
   String? _msg;
 
   Future<void> _redeemOnChain() async {
+    if (kIsWeb) {
+      demoHints.show(
+        'Verifying secret hash on-chain and claiming funds from the voucher',
+        position: DemoHintPosition.right,
+      );
+    }
+
     hideAllTextMenusAndKeyboard();
     FocusScope.of(context).unfocus();
     final input = _secretCtrl.text.trim();
@@ -67,6 +77,16 @@ class _RedeemPageState extends State<RedeemPage> {
         _status = OpStatus.success;
         _msg = 'Redeemed! tx: $tx';
       });
+
+      if (kIsWeb) {
+        demoHints.show(
+          'Funds successfully claimed! Hash verified and ETH transferred to your wallet',
+          position: DemoHintPosition.right,
+        );
+        Future.delayed(const Duration(seconds: 4), () {
+          if (kIsWeb) demoHints.hide();
+        });
+      }
     } catch (e) {
       setState(() {
         _status = OpStatus.error;
@@ -137,8 +157,8 @@ class _RedeemPageState extends State<RedeemPage> {
               ),
             ),
             FilledButton.icon(
-              icon: const Icon(Icons.download_done_outlined),
-              label: const Text('Redeem now'),
+              icon: const Icon(Icons.account_balance_wallet),
+              label: const Text('Redeem Voucher'),
               onPressed: _status == OpStatus.working ? null : _redeemOnChain,
             ),
           ],

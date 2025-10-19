@@ -71,17 +71,29 @@ class _MockNearby {
 
   _MockNearby(this.emit);
 
+  Timer? _t4;
+
   Future<void> start({required String role}) async {
     _role = role;
     emit({'type': 'status', 'value': role == 'sender' ? 'advertising' : 'browsing'});
-    _t1 = Timer(const Duration(milliseconds: 500), () {
+
+    // Searching phase (1.5s)
+    _t1 = Timer(const Duration(milliseconds: 1500), () {
       emit({'type': 'status', 'value': 'connecting'});
     });
-    _t2 = Timer(const Duration(milliseconds: 1000), () {
-      emit({'type': 'connected', 'peer': 'Demo iPhone'});
+
+    // Approaching phase (0.8s after connecting)
+    _t2 = Timer(const Duration(milliseconds: 2300), () {
+      emit({'type': 'status', 'value': 'approaching'});
     });
 
-    _t3 = Timer(const Duration(milliseconds: 1700), () {
+    // Connected phase (1s after approaching)
+    _t3 = Timer(const Duration(milliseconds: 3300), () {
+      emit({'type': 'connected', 'peer': 'Device'});
+    });
+
+    // Auto-receive after connection (if receiver)
+    _t4 = Timer(const Duration(milliseconds: 5500), () {
       if (_role == 'receiver') {
         final v = AppMemory.lastVoucher;
         if (v != null) {
@@ -94,14 +106,15 @@ class _MockNearby {
 
   Future<void> sendJson(Map<String, dynamic> payload) async {
     emit({'type': 'sent'});
-    _t3?.cancel();
-    _t3 = Timer(const Duration(milliseconds: 700), () {
+    _t4?.cancel();
+    // Give time for transfer animation to play
+    _t4 = Timer(const Duration(milliseconds: 1500), () {
       emit({'type': 'payload', 'json': jsonEncode(payload)});
     });
   }
 
   Future<void> stop() async {
-    for (final t in [_t1, _t2, _t3]) {
+    for (final t in [_t1, _t2, _t3, _t4]) {
       t?.cancel();
     }
     emit({'type': 'disconnected'});
